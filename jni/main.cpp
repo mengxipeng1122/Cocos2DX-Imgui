@@ -164,6 +164,12 @@ static std::map<std::string, std::function<int(unsigned char*, bool)>> keyHandle
     {"E"        ,[=](unsigned char* baseaddress, bool isPressed){return 0;}},
     {"F"        ,[=](unsigned char* baseaddress, bool isPressed){return 0;}},
 };
+static std::map<std::string, ImGuiKey> imguiKeyMap = {
+    {"up"       ,ImGuiKey_UpArrow   },
+    {"down"     ,ImGuiKey_DownArrow },
+    {"left"     ,ImGuiKey_LeftArrow },
+    {"right"    ,ImGuiKey_RightArrow},
+};
 extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPressed)
 {
     LOG_INFOS(" handleKey %d %d", keyCode, isPressed);
@@ -174,6 +180,16 @@ extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPr
         if(it2!=keyHandlers.end()) {
             auto fn = keyHandlers[key];
             fn(baseaddress, isPressed);
+            if(cocos2d::Director::getInstance()->isPaused()){
+                auto it3 = imguiKeyMap.find(key);
+                if(it3!=imguiKeyMap.end()){
+                    auto imguiKey = imguiKeyMap[key];
+                    ImGuiIO& io = ImGui::GetIO();
+                    LOG_INFOS("imguiKey %d", imguiKey);
+                    io.AddKeyEvent(imguiKey, isPressed);
+                    io.SetKeyEventNativeData(imguiKey, keyCode, keyCode);
+                }
+            }
         }
     }
     return 0;
@@ -181,7 +197,7 @@ extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPr
 
 extern "C" int handle_touch(unsigned char* baseaddress, int id, float x, float y, bool isPressed)
 {
-    LOG_INFOS("%d %f %f %d", id, x, y, isPressed);
+    //LOG_INFOS("%d %f %f %d", id, x, y, isPressed);
     {
         ImGuiIO& io = ImGui::GetIO();
         io.AddMousePosEvent(x,y);
@@ -192,7 +208,7 @@ extern "C" int handle_touch(unsigned char* baseaddress, int id, float x, float y
 
 extern "C" int handle_move(unsigned char* baseaddress, int id, float x, float y)
 {
-    LOG_INFOS("%d %f %f ", id, x, y);
+    //LOG_INFOS("%d %f %f ", id, x, y);
     {
         ImGuiIO& io = ImGui::GetIO();
         io.AddMousePosEvent(x,y);
