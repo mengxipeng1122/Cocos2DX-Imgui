@@ -141,14 +141,46 @@ extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPr
     return 0;
 }
 
+static void createNodeTreeInImGui(cocos2d::Node* pnode)
+{
+    if(pnode!=nullptr){
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        char info[PATH_MAX];
+        sprintf(info, "%p:%s", pnode, getClassName(pnode));
+        if (ImGui::TreeNode(info)) {
+            auto childrenCount = pnode->getChildrenCount(); 
+            if(childrenCount>0) {
+                for(auto & c : pnode->getChildren()) {
+                    createNodeTreeInImGui(c);
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+}
+
 extern "C" int hook_eglSwapBuffers(unsigned char* baseaddress) 
 {
-    ImGuiIO& io = ImGui::GetIO();
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplAndroid_NewFrame();
-    ImGui::NewFrame();
-    ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    auto* pDirector = cocos2d::Director::getInstance(); 
+    auto isPaused = pDirector->isPaused();
+    if(isPaused){
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplAndroid_NewFrame();
+        ImGui::NewFrame();
+        {
+            ImGui::Begin("Node viewer"); 
+            {
+                auto* pDirector = cocos2d::Director::getInstance(); 
+                auto* pScene = pDirector->getRunningScene();
+                createNodeTreeInImGui(pScene);
+            }
+
+            ImGui::End();
+        }
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    }
     return 0;
 }
