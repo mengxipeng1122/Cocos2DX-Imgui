@@ -1,12 +1,31 @@
 
 
 #include <map>
+#include <queue>
 #include <string>
 #include "utils.h"
 #include "cocos2dx.h"
 #include "imgui.h"
 #include "imgui_impl_android.h"
 #include "imgui_impl_opengl3.h"
+
+static void createNodeTreeInImGui(cocos2d::Node* pnode)
+{
+    if(pnode!=nullptr){
+        // ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        char info[PATH_MAX];
+        sprintf(info, "%p:%s", pnode, getClassName(pnode));
+        if (ImGui::TreeNode(info)) {
+            auto childrenCount = pnode->getChildrenCount(); 
+            if(childrenCount>0) {
+                for(auto & c : pnode->getChildren()) {
+                    createNodeTreeInImGui(c);
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+}
 
 static void imguiInit(int width, int height)
 {
@@ -64,6 +83,25 @@ static void imguiInit(int width, int height)
     ImGui::GetStyle().ScaleAllSizes(3.0f);
 
 }
+static void updateNodeViewer()
+{
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplAndroid_NewFrame();
+        ImGui::NewFrame();
+        {
+            ImGui::Begin("Node viewer"); 
+            {
+                auto* pDirector = cocos2d::Director::getInstance(); 
+                auto* pScene = pDirector->getRunningScene();
+                createNodeTreeInImGui(pScene);
+            }
+
+            ImGui::End();
+        }
+
+        ImGui::Render();
+}
 
 extern "C"  int init(unsigned char* baseaddress)
 {
@@ -79,7 +117,7 @@ extern "C"  int init(unsigned char* baseaddress)
     int width = size.width;
     int height= size.height;
     imguiInit(width, height);
-    
+
     return 0;
 }
 
@@ -141,22 +179,31 @@ extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPr
     return 0;
 }
 
-static void createNodeTreeInImGui(cocos2d::Node* pnode)
+extern "C" int handle_touch(unsigned char* baseaddress, int id, float x, float y, bool isPressed)
 {
-    if(pnode!=nullptr){
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-        char info[PATH_MAX];
-        sprintf(info, "%p:%s", pnode, getClassName(pnode));
-        if (ImGui::TreeNode(info)) {
-            auto childrenCount = pnode->getChildrenCount(); 
-            if(childrenCount>0) {
-                for(auto & c : pnode->getChildren()) {
-                    createNodeTreeInImGui(c);
-                }
-            }
-            ImGui::TreePop();
-        }
-    }
+    LOG_INFOS("%d %f %f %d", id, x, y, isPressed);
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMousePosEvent(x,y);
+        io.AddMouseButtonEvent(id, isPressed);
+    }    
+    return 0;
+}
+
+extern "C" int handle_move(unsigned char* baseaddress, int id, float x, float y)
+{
+    LOG_INFOS("%d %f %f ", id, x, y);
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMousePosEvent(x,y);
+    }    
+    return 0;
+}
+
+
+extern "C" bool isPaused(unsigned char* baseaddress )
+{
+    return cocos2d::Director::getInstance()->isPaused(); 
 }
 
 extern "C" int hook_eglSwapBuffers(unsigned char* baseaddress) 
@@ -164,22 +211,8 @@ extern "C" int hook_eglSwapBuffers(unsigned char* baseaddress)
     auto* pDirector = cocos2d::Director::getInstance(); 
     auto isPaused = pDirector->isPaused();
     if(isPaused){
-        ImGuiIO& io = ImGui::GetIO();
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplAndroid_NewFrame();
-        ImGui::NewFrame();
-        {
-            ImGui::Begin("Node viewer"); 
-            {
-                auto* pDirector = cocos2d::Director::getInstance(); 
-                auto* pScene = pDirector->getRunningScene();
-                createNodeTreeInImGui(pScene);
-            }
-
-            ImGui::End();
-        }
-
-        ImGui::Render();
+        
+        updateNodeViewer();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
     return 0;

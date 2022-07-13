@@ -55,6 +55,54 @@ hook_key_input : function() {
     }
 },
 
+hook_touch : function() {
+    {
+        Java.perform(()=>{
+            let Cocos2dxGLSurfaceView = Java.use('org.cocos2dx.lib.Cocos2dxRenderer')
+            Cocos2dxGLSurfaceView.handleActionDown.overload('int', 'float','float').implementation = function(id:number, x:number, y:number) {
+                {
+                    let funp = loadm?.syms?.handle_touch
+                    if(funp==undefined) throw `can not find handle_touch`;
+                    let handled =  new NativeFunction(funp, 'int',['pointer','int','float', 'float','bool'])(m.base, id, x, y, 1);
+                }
+                {
+                    let funp = loadm?.syms?.isPaused
+                    if(funp==undefined) throw `can not find isPaused`;
+                    let paused = new NativeFunction(funp,'bool', ['pointer'])(m.base)
+                    if(!paused) this.handleActionDown(id, x,y);
+                }
+            };
+            Cocos2dxGLSurfaceView.handleActionUp.overload('int', 'float','float').implementation = function(id:number, x:number, y:number) {
+                {
+                    let funp = loadm?.syms?.handle_touch
+                    if(funp==undefined) throw `can not find handle_touch`;
+                    let handled =  new NativeFunction(funp, 'int',['pointer','int','float', 'float','bool'])(m.base, id, x, y, 0);
+                }
+                {
+                    let funp = loadm?.syms?.isPaused
+                    if(funp==undefined) throw `can not find isPaused`;
+                    let paused = new NativeFunction(funp,'bool', ['pointer'])(m.base)
+                    if(!paused) this.handleActionUp(id, x,y);
+                }
+            };
+            Cocos2dxGLSurfaceView.handleActionMove.overload('[I', '[F', '[F').implementation = function(ids:number[], xs:number[], ys:number[]) {
+                {
+                    let funp = loadm?.syms?.handle_move
+                    if(funp==undefined) throw `can not find handle_move`;
+                    //only pass one pointer
+                    let handled =  new NativeFunction(funp, 'int',['pointer','int','float', 'float'])(m.base, ids[0], xs[0], ys[0]);
+                }
+                {
+                    let funp = loadm?.syms?.isPaused
+                    if(funp==undefined) throw `can not find isPaused`;
+                    let paused = new NativeFunction(funp,'bool', ['pointer'])(m.base)
+                    if(!paused) this.handleActionUp(ids, xs,ys);
+                }
+            };
+        })
+    }
+},
+
 hook_eglSwapBuffers : function(){
     {
         let funname = 'eglSwapBuffers'
