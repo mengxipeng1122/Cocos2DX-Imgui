@@ -1,0 +1,7 @@
+
+*.swp
+bins
+obj
+libs
+_agent.js
+node_modules
