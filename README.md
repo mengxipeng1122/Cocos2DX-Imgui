@@ -9,5 +9,5 @@ This project tries to integrate [imgui](https://github.com/ocornut/imgui.git) in
 
 ## Screen shot
 
-![screen shot](./blob/master/assets/screenshot.png?raw=true)
+![screen shot](./assets/screenshot.png?raw=true)
 
