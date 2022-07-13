@@ -55,6 +55,20 @@ hook_key_input : function() {
     }
 },
 
+hook_eglSwapBuffers : function(){
+    {
+        let funname = 'eglSwapBuffers'
+        Interceptor.attach(Module.getExportByName(null,funname),{
+            onEnter : function(args){
+                let funp = loadm?.syms?.hook_eglSwapBuffers;
+                if(funp==undefined) throw `can not find eglSwapBuffers`
+                new NativeFunction(funp,'int',['pointer'])(m.base)
+            }
+        })
+    }
+
+},
+
     };
     
     Object.keys(pathes).forEach(k => {
