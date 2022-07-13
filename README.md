@@ -7,7 +7,7 @@ This project tries to integrate [imgui](https://github.com/ocornut/imgui.git) in
 - package name: com.ketchapp.knifehit
 - link: [apkpure](https://apkpure.com/knife-hit/com.ketchapp.knifehit)
 
-## Scrren shot
+## Screen shot
 
-![alt text](https://github.com/[username]/[reponame]/blob/[branch]/image.jpg?raw=true
+![screen shot](./blob/master/assets/screenshot.png?raw=true)
 
