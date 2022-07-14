@@ -49,11 +49,22 @@ namespace cocos2d
     {
         auto* getRunningScene(){
             auto* pthiz = (unsigned char*)this;
+
+#ifdef ARM64_V8A
             return *(Scene**)&pthiz[0x180];
+#else
+//TODO
+#error "please implements other atchitecture"
+#endif
         }
         auto isPaused(){
             auto* pthiz = (unsigned char*)this;
+#ifdef ARM64_V8A
             return *(bool*)&pthiz[0x170];
+#else
+//TODO
+#error "please implements other atchitecture"
+#endif
         }
         static Director* getInstance();
         Size getVisibleSize() const;
