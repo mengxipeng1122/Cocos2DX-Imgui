@@ -170,9 +170,9 @@ static std::map<std::string, ImGuiKey> imguiKeyMap = {
     {"left"     ,ImGuiKey_LeftArrow },
     {"right"    ,ImGuiKey_RightArrow},
 };
-extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPressed)
+extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, int scanCode, bool isPressed)
 {
-    LOG_INFOS(" handleKey %d %d", keyCode, isPressed);
+    LOG_INFOS(" handleKey %d %d %d", keyCode, scanCode, isPressed);
     auto it1 = keyCodeMap.find(keyCode);
     if(it1!=keyCodeMap.end()){
         auto key = keyCodeMap[keyCode];
@@ -187,7 +187,7 @@ extern "C" int handle_keycode(unsigned char* baseaddress, int keyCode, bool isPr
                     ImGuiIO& io = ImGui::GetIO();
                     LOG_INFOS("imguiKey %d", imguiKey);
                     io.AddKeyEvent(imguiKey, isPressed);
-                    io.SetKeyEventNativeData(imguiKey, keyCode, keyCode);
+                    io.SetKeyEventNativeData(imguiKey, keyCode, scanCode);
                 }
             }
         }

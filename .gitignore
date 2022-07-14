@@ -1,5 +1,6 @@
 
-patchso.ts
+__handlers__
+\patchso.ts
 *.swp
 bins
 obj

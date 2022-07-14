@@ -38,19 +38,41 @@ let inject = ()=>{
 hook_key_input : function() {
     {
         Java.perform(()=>{
-            let Cocos2dxGLSurfaceView = Java.use('org.cocos2dx.lib.Cocos2dxGLSurfaceView')
-            Cocos2dxGLSurfaceView.onKeyDown.overload('int', 'android.view.KeyEvent').implementation = function(keyCode:number, keyEvent:Object) {
-                let funp = loadm?.syms?.handle_keycode
-                if(funp==undefined) throw `can not find handle_key`;
-                let handled =  new NativeFunction(funp, 'bool',['pointer','uint','bool'])(Process.getModuleByName(soname).base, keyCode, 1);
-                return true;
-            };
-            Cocos2dxGLSurfaceView.onKeyUp.overload('int', 'android.view.KeyEvent').implementation = function(keyCode:number, keyEvent:Object) {
-                let funp = loadm?.syms?.handle_keycode
-                if(funp==undefined) throw `can not find handle_key`;
-                let handled =  new NativeFunction(funp, 'bool',['pointer','uint','bool'])(Process.getModuleByName(soname).base, keyCode, 0);
-                return true;
-            };
+            {
+                let Cocos2dxGLSurfaceView = Java.use('org.cocos2dx.lib.Cocos2dxGLSurfaceView')
+                Cocos2dxGLSurfaceView.onKeyDown.overload('int', 'android.view.KeyEvent').implementation = function(keyCode:number, event:any) {
+                    {
+                        let funp = loadm?.syms?.handle_keycode
+                        if(funp==undefined) throw `can not find handle_keycode`;
+                        let keyevent = Java.cast(event, Java.use('android.view.KeyEvent'))
+                        let scanCode = keyevent.getScanCode();
+                        let handled =  new NativeFunction(funp, 'int',['pointer','int','int', 'int'])(m.base, keyCode, scanCode, 1);
+                    }
+                    {
+                        let funp = loadm?.syms?.isPaused
+                        if(funp==undefined) throw `can not find isPaused`;
+                        let paused = new NativeFunction(funp,'bool', ['pointer'])(m.base)
+                        if(!paused) return this.onKeyDown(keyCode, event);
+                        else return true;
+                    }
+                };
+                Cocos2dxGLSurfaceView.onKeyUp.overload('int', 'android.view.KeyEvent').implementation = function(keyCode:number, event:any) {
+                    {
+                        let funp = loadm?.syms?.handle_keycode
+                        if(funp==undefined) throw `can not find handle_keycode`;
+                        let keyevent = Java.cast(event, Java.use('android.view.KeyEvent'))
+                        let scanCode = keyevent.getScanCode();
+                        let handled =  new NativeFunction(funp, 'int',['pointer','int','int', 'int'])(m.base, keyCode, scanCode, 0);
+                    }
+                    {
+                        let funp = loadm?.syms?.isPaused
+                        if(funp==undefined) throw `can not find isPaused`;
+                        let paused = new NativeFunction(funp,'bool', ['pointer'])(m.base)
+                        if(!paused) return this.onKeyUp(keyCode, event);
+                        else return true;
+                    }
+                };
+            }
         })
     }
 },
