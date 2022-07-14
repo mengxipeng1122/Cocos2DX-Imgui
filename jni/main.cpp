@@ -9,6 +9,7 @@
 #include "imgui_impl_android.h"
 #include "imgui_impl_opengl3.h"
 
+static cocos2d::Node* gFocusedNode=nullptr;
 static void createNodeTreeInImGui(cocos2d::Node* pnode)
 {
     if(pnode!=nullptr){
@@ -16,6 +17,11 @@ static void createNodeTreeInImGui(cocos2d::Node* pnode)
         char info[PATH_MAX];
         sprintf(info, "%p:%s", pnode, getClassName(pnode));
         if (ImGui::TreeNode(info)) {
+            auto focused = ImGui::IsItemFocused();
+            if(focused){
+                gFocusedNode = pnode;
+            }
+
             auto childrenCount = pnode->getChildrenCount(); 
             if(childrenCount>0) {
                 for(auto & c : pnode->getChildren()) {
@@ -83,20 +89,48 @@ static void imguiInit(int width, int height)
     ImGui::GetStyle().ScaleAllSizes(3.0f);
 
 }
-static void updateNodeViewer()
+static void updateNodesNavigator()
 {
         ImGuiIO& io = ImGui::GetIO();
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplAndroid_NewFrame();
         ImGui::NewFrame();
         {
-            ImGui::Begin("Node viewer"); 
+            gFocusedNode=nullptr;
+
+            ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1000, 680), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Nodes Navigator"); 
             {
                 auto* pDirector = cocos2d::Director::getInstance(); 
                 auto* pScene = pDirector->getRunningScene();
                 createNodeTreeInImGui(pScene);
             }
-
+            ImGui::End();
+        }
+        {
+            ImGui::SetNextWindowPos(ImVec2(20, 720), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1000, 680), ImGuiCond_FirstUseEver);
+            ImGui::Begin("Node info"); 
+            if(gFocusedNode!=nullptr) {
+                auto* pnode = gFocusedNode;
+                const auto* clzName = getClassName(pnode);
+                ImGui::Text("%p : %s", pnode, clzName);
+                const auto& pos =  pnode->getPosition();
+                ImGui::Text("pos %f %f ", pos.x, pos.y);
+                const auto& sz = pnode->getContentSize();
+                ImGui::Text("sz %f %f ", sz.width, sz.height);
+                const auto anchorpt = pnode->getAnchorPoint();
+                ImGui::Text("ahchor pos %f %f ", anchorpt.x, anchorpt.y);
+                cocos2d::Rect rect = pnode->getBoundingBox();
+                ImGui::Text("rect %f %f %f %f", rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
+                auto visible = pnode->isVisible();
+                ImGui::Text(" visible %s", visible?"true":"false");
+                if(!strcmp(clzName, "N7cocos2d5LabelE")) {
+                    auto* plabel = (cocos2d::Label*) pnode;
+                    auto& text = plabel->getString();
+                    ImGui::Text(" text %s ", text.c_str());
+                }
+            }
             ImGui::End();
         }
 
@@ -228,8 +262,13 @@ extern "C" int hook_eglSwapBuffers(unsigned char* baseaddress)
     auto isPaused = pDirector->isPaused();
     if(isPaused){
         
-        updateNodeViewer();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplAndroid_NewFrame();
+
+        updateNodesNavigator();
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
     return 0;
 }
+
