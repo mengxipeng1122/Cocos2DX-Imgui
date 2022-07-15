@@ -1,9 +1,9 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
 import {inlineHookPatch, restoreAllInlineHooks} from './patchutils'
-import { showAsmCode, _frida_err, _frida_hexdump, _frida_log } from './fridautils'
-import  {info as patchsoinfo} from './patchso'
-import  {info as soinfo} from './so'
+import {showAsmCode, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
+import {info as patchsoinfo} from './patchso'
+import {info as soinfo} from './so'
 //////////////////////////////////////////////////
 // global variables 
 let soname = 'libMyGame.so'
@@ -27,14 +27,7 @@ let loadPatchSo = ()=>{
 }
 let inject = ()=>{
     let m = Process.getModuleByName(soname)
-    {
-        let funname = '_ZN7cocos2d11Application11getInstanceEv'
-        let funp = Module.getExportByName(soname,funname)
-        console.log(JSON.stringify(funp))
-    }
-
-    let loadm  = loadPatchSo();
-
+    let loadm = loadPatchSo();
     if(loadm.syms?.init!=undefined){
         new NativeFunction(loadm.syms.init,'int',['pointer'])(m.base)
     }
@@ -167,7 +160,7 @@ let test = function()
     if(m==null) return;
     let loadm  = loadPatchSo();
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
-    let hook_ptr = m.base.add(0x2DC85C)
+    let hook_ptr = m.base.add(0x2DC844)
     let funp = loadm?.syms?.hook_test;
     if(funp==undefined) throw `can not find hook_test`
     let hook_fun_ptr = funp;

@@ -242,7 +242,11 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
     return trampoline_len;
 }
 
-let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [ ];
+//let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [ ];
+let inline_hook_list:{[key:string]:{
+        origin_bytes:ArrayBuffer| null,
+        hook_ptr:NativePointer,
+    }}= { };
 
 let patchInfos:{[key:string]:{inline_hook:Function}} ={
 
@@ -253,26 +257,40 @@ let patchInfos:{[key:string]:{inline_hook:Function}} ={
 
 export function restoreAllInlineHooks()
 {
-    console.log('inline_hook_list', inline_hook_list.length)
-    inline_hook_list.forEach(h=>{
-        if (h.origin_bytes!=null){
-            let p = h.hook_ptr;
-            let sz = h.origin_bytes.byteLength;
-            Memory.protect(p,sz,'rwx')
-            h.hook_ptr.writeByteArray(h.origin_bytes)
-            Memory.protect(p,sz,'rwx')
-        }
-    })
+    console.log('inline_hook_list', Object.keys(inline_hook_list).length)
+    Object.keys(inline_hook_list)
+        .forEach(k=>{
+            let v = inline_hook_list[k]
+            if (v.origin_bytes!=null){
+                let p = v.hook_ptr;
+                let sz = v.origin_bytes.byteLength;
+                Memory.protect(p,sz,'rwx')
+                p.writeByteArray(v.origin_bytes)
+                Memory.protect(p,sz,'rwx')
+            }
+        })
 }
 
 export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
     let arch = Process.arch;
     let fun = patchInfos[arch].inline_hook;
-    inline_hook_list.push({
-        hook_ptr: hook_ptr,
-        origin_bytes : hook_ptr.readByteArray(4),
-    })
-    return fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
+    let origin_bytes;
+    let k = hook_ptr.toString();
+    if(k in inline_hook_list) {
+        let v = inline_hook_list[k];
+        origin_bytes = v.origin_bytes;
+        console.log("hooked, don't rehook") 
+        showAsmCode(hook_ptr)
+        return -1;
+    }
+    else{
+        let origin_bytes = hook_ptr.readByteArray(4);
+        inline_hook_list[k]= {
+            hook_ptr: hook_ptr,
+            origin_bytes : origin_bytes,
+        }
+        return fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1, origin_bytes);
+    }
 }
 

@@ -2,7 +2,6 @@
 
 import {_frida_err, _frida_log, logWithFileNameAndLineNo} from './fridautils'
 // store load buffer to global variable to void frida's GC to release loaded buffer
-export let loadedBuff =ptr(0);
 //////////////////////////////////////////////////
 // type defines
 type RelocationType = {address:number, addend:number, size:number, sym_name:string, type:number};
@@ -98,8 +97,25 @@ function resolveSymbol(sym_name:string, exportSyms?:SymbolMap, syms?:SymbolMap, 
     return null;
 }
 
-export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, ignoreSymbols?:string[], libs?:string[], dir?:string):LoadSoInfoType
-{
+let loadedSoList : {[key:string]:{
+        buff :NativePointer,
+        syms : SymbolMap,
+    }} = {};
+
+export function unloadSo(){
+    loadedSoList = {}
+}
+
+export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, ignoreSymbols?:string[], libs?:string[], dir?:string):LoadSoInfoType {
+    if(info.name in loadedSoList) {
+        console.log(`"have load {info.name} don't reload"`); 
+        let v = loadedSoList[info.name];
+        let loadm = {
+            buff : v.buff,
+            syms : v.syms,
+        }
+        return loadm;
+    }
     if(dir==undefined) dir='/data/local/tmp';
     // sanity check
     let arch = Process.arch;
@@ -114,7 +130,6 @@ export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, igno
     }
 
     let buff = Memory.alloc(info.load_size);
-    loadedBuff=buff;
     Memory.protect(buff, info.load_size, 'rwx');
     // allocate memory fot new so
     if(info.loads!=undefined)
@@ -241,5 +256,8 @@ export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, igno
         }
     }
 
-    return {buff:buff, syms:exportSyms};
+    let loadm = {buff:buff, syms:exportSyms};
+    loadedSoList[info.name] = loadm;
+
+    return loadm;
 }
