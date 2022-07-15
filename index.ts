@@ -194,14 +194,6 @@ let main = ()=>{
 
 
 console.log('hello world')
-main();
-
-class Runtime{
-}
-
-export const runtime = new Runtime();
-console.log(JSON.stringify(runtime))
-let id = Script.bindWeak(runtime, () => { console.log('dispose called');  ptr(0x6666).writeInt(11)});
 
 rpc.exports.init = function(){
     console.log('inited')
@@ -210,20 +202,13 @@ rpc.exports.dispose = function(){
     console.log('dispose')
 }
 
-module.exports.dispose = function(){
-    console.log('dispose')
-}
-module.exports.unload = function(){
-    console.log('dispose')
-}
-module.exports.uninit = function(){
-    console.log('dispose')
-}
-module.exports.deinit = function(){
-    console.log('dispose')
+rpc.exports.unload = function(){
+    console.log('unload called for Typescript')
 }
 
+main();
 
+console.log('exit')
 
 
 
