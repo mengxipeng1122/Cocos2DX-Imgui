@@ -15,6 +15,8 @@ def main():
     parser.add_argument("input", type=str)
     parser.add_argument('-o', '--output', default='/tmp/tt.ts')
     parser.add_argument('--no-content', action='store_true', default=False)
+    parser.add_argument('--no-exports', action='store_true', default=False)
+    parser.add_argument('--no-relocations', action='store_true', default=False)
     #parser.add_argument('-t', '--type',choices=['thumb', 'arm', 'arm64'], default='thumb')
     args = parser.parse_args()
     moudle_path = os.path.dirname(os.path.abspath(__file__))
@@ -50,29 +52,31 @@ def main():
             load_size = max(sz, load_size)
     # exported_symbols
     exported_symbols = []
-    for k, func in enumerate(binary.exported_functions):
-        exported_symbols.append({
-            'name'      : func.name,
-            'address'   : func.address,
-            });
-    for k, sym in enumerate(binary.exported_symbols):
-        if not sym.exported: continue
-        # avoid duplication
-        if sym.name in [s['name'] for s in exported_symbols]: continue
-        exported_symbols.append({
-            'name'      : sym.name,
-            'address'   : sym.value,
-            });
+    if not args.no_exports:
+        for k, func in enumerate(binary.exported_functions):
+            exported_symbols.append({
+                'name'      : func.name,
+                'address'   : func.address,
+                });
+        for k, sym in enumerate(binary.exported_symbols):
+            if not sym.exported: continue
+            # avoid duplication
+            if sym.name in [s['name'] for s in exported_symbols]: continue
+            exported_symbols.append({
+                'name'      : sym.name,
+                'address'   : sym.value,
+                });
     # relocations
     relocations=[];
-    for k, rel in enumerate(binary.relocations):
-        relocations.append({
-            'address'   : rel.address,
-            'addend'    : rel.addend,
-            'size'      : rel.size,
-            'sym_name'  : rel.symbol.name,
-            'type'      : rel.type,
-        })
+    if not args.no_relocations:
+        for k, rel in enumerate(binary.relocations):
+            relocations.append({
+                'address'   : rel.address,
+                'addend'    : rel.addend,
+                'size'      : rel.size,
+                'sym_name'  : rel.symbol.name,
+                'type'      : rel.type,
+            })
     # ctors
     ctors_offset=None
     ctors = [];

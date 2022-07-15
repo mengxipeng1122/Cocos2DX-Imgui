@@ -1,20 +1,15 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
-import {putArm64HookPatch} from './patchutils'
+import {inlineHookPatch, restoreAllInlineHooks} from './patchutils'
 import { showAsmCode, _frida_err, _frida_hexdump, _frida_log } from './fridautils'
-import  {info as soinfo} from './patchso'
+import  {info as patchsoinfo} from './patchso'
+import  {info as soinfo} from './so'
 //////////////////////////////////////////////////
 // global variables 
 let soname = 'libMyGame.so'
 
-let inject = ()=>{
-    let m = Process.getModuleByName(soname)
-    {
-        let funname = '_ZN7cocos2d11Application11getInstanceEv'
-        let funp = Module.getExportByName(soname,funname)
-        console.log(JSON.stringify(funp))
-    }
-    let loadm = loadSo(soinfo,
+let loadPatchSo = ()=>{
+    let loadm = loadSo(patchsoinfo,
         {
             _frida_log:     _frida_log,
             _frida_err:     _frida_err,
@@ -28,6 +23,17 @@ let inject = ()=>{
             soname
         ],)
     // console.log(JSON.stringify(loadm))
+    return loadm;
+}
+let inject = ()=>{
+    let m = Process.getModuleByName(soname)
+    {
+        let funname = '_ZN7cocos2d11Application11getInstanceEv'
+        let funp = Module.getExportByName(soname,funname)
+        console.log(JSON.stringify(funp))
+    }
+
+    let loadm  = loadPatchSo();
 
     if(loadm.syms?.init!=undefined){
         new NativeFunction(loadm.syms.init,'int',['pointer'])(m.base)
@@ -153,20 +159,24 @@ hook_eglSwapBuffers : function(){
         handle();
     });;
 
-    // test
-    {
-
-        let trampoline_ptr = m.base.add(0x9f6c48);
-        let hook_ptr = m.base.add(0x2DC85C)
-        let funp = loadm?.syms?.hook_test;
-        if(funp==undefined) throw `can not find hook_test`
-        let hook_fun_ptr = funp;
-        let origin_inst = [0xa2, 0x37, 0x00, 0xf9]
-        putArm64HookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base, origin_inst )
-    }
 }
 
+let test = function()
+{
+    let m = Process.findModuleByName(soname)
+    if(m==null) return;
+    let loadm  = loadPatchSo();
+    let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
+    let hook_ptr = m.base.add(0x2DC85C)
+    let funp = loadm?.syms?.hook_test;
+    if(funp==undefined) throw `can not find hook_test`
+    let hook_fun_ptr = funp;
+    inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
+}
+
+
 let main = ()=>{
+    let fun = test;
     // early inject 
     let funs = ['dlopen', 'android_dlopen_ext']
     funs.forEach(f=>{
@@ -181,7 +191,7 @@ let main = ()=>{
                     let funname = '_ZN9GameScene4initEv'; //GameScene::init(void)
                     Interceptor.attach(Module.getExportByName(soname, funname),{
                         onLeave:function(retval){
-                            inject(); // inject our code after invoked GameScene::init 
+                            fun(); // inject our code after invoked GameScene::init 
                         },
                     })
                 }
@@ -189,26 +199,18 @@ let main = ()=>{
         });
     })
     // inject when then game has been started
-    inject();
+    fun();
 }
 
-
-console.log('hello world')
-
-rpc.exports.init = function(){
-    console.log('inited')
-}
-rpc.exports.dispose = function(){
-    console.log('dispose')
-}
 
 rpc.exports.unload = function(){
     console.log('unload called for Typescript')
+    restoreAllInlineHooks()
 }
 
+console.log('########################################');
 main();
 
-console.log('exit')
 
 
 

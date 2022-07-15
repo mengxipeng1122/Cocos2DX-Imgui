@@ -18,7 +18,7 @@ class MyHandler(FileSystemEventHandler):
         self.last_modified = datetime.now()
 
     def on_modified(self, event):
-        if datetime.now() - self.last_modified < timedelta(seconds=3):
+        if datetime.now() - self.last_modified < timedelta(seconds=4):
             return
         else:
             self.last_modified = datetime.now()
@@ -61,7 +61,8 @@ def main():
             src = open(self._src_path).read()
             self._session  = device.attach(pid)
             script = self._session.create_script(src)
-            #script.set_log_handler(self._log)
+            script.on('message', self._message)
+            script.set_log_handler(self._log)
             script.load()
             self._script = script;
             if 'init' in self._script.list_exports(): self._script.exports.init();
@@ -72,6 +73,9 @@ def main():
 
         def _log(self, level, text):
             print('log', level, text)
+
+        def _message(self, text, data):
+            print('message', text, data)
 
     global runner
     runner = Runner(pid, src_path)

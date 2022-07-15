@@ -172,7 +172,7 @@ export function putArm64Nop(sp:NativePointer, ep?:NativePointer):void{
 }
 
 
-export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer, origin_inst?:number[]):number
+export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
     let trampoline_len = 0xa8;
@@ -224,7 +224,10 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
  trampoline_ptr.add(0xa8).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xa8:	nop	 
  trampoline_ptr.add(0xac).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xac:	nop	 
 
-    if(origin_inst!=undefined) trampoline_ptr.add(0x98).writeByteArray(origin_inst);
+ 
+    let origin_bytes = hook_ptr.readByteArray(4);
+    if(origin_bytes!=null) trampoline_ptr.add(0x98).writeByteArray(origin_bytes);
+    // relocation origin 
     trampoline_ptr.add(0xa0).writePointer(para1)
     trampoline_ptr.add(0xa8).writePointer(hook_fun_ptr)
 
@@ -237,5 +240,40 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
         });
     }
     return trampoline_len;
+}
+
+let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [
+
+];
+
+let patchInfos:{[key:string]:{inline_hook:Function}} ={
+
+    'arm64': {
+'inline_hook' : putArm64HookPatch,
+    },
+}
+
+export function restoreAllInlineHooks()
+{
+    inline_hook_list.forEach(h=>{
+        if (h.origin_bytes!=null){
+            let p = h.hook_ptr;
+            let sz = h.origin_bytes.byteLength;
+            Memory.protect(p,sz,'rwx')
+            h.hook_ptr.writeByteArray(h.origin_bytes)
+            Memory.protect(p,sz,'rwx')
+        }
+    })
+}
+
+export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
+{
+    let arch = Process.arch;
+    let fun = patchInfos[arch].inline_hook;
+    inline_hook_list.push({
+        hook_ptr: hook_ptr,
+        origin_bytes : hook_ptr.readByteArray(4),
+    })
+    return fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
 }
 
