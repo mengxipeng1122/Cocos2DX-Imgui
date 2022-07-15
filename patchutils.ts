@@ -242,9 +242,7 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
     return trampoline_len;
 }
 
-let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [
-
-];
+let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [ ];
 
 let patchInfos:{[key:string]:{inline_hook:Function}} ={
 
@@ -255,6 +253,7 @@ let patchInfos:{[key:string]:{inline_hook:Function}} ={
 
 export function restoreAllInlineHooks()
 {
+    console.log('inline_hook_list', inline_hook_list.length)
     inline_hook_list.forEach(h=>{
         if (h.origin_bytes!=null){
             let p = h.hook_ptr;

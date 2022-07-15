@@ -9,6 +9,7 @@ import argparse
 from  datetime import  datetime, timedelta #*
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import threading
 
 runner=None
 
@@ -50,7 +51,7 @@ def main():
             self._script          = None
             self._src_path        = src_path;
             self._pid             = pid;
-            #self._session         = device.attach(pid)
+            self._evt = threading.Event()
 
         def reloadScript(self):
             if self._script != None:
@@ -62,6 +63,7 @@ def main():
             self._session  = device.attach(pid)
             script = self._session.create_script(src)
             script.on('message', self._message)
+            script.on('destroyed', self._destroyed)
             script.set_log_handler(self._log)
             script.load()
             self._script = script;
@@ -72,10 +74,16 @@ def main():
             self.reloadScript();
 
         def _log(self, level, text):
-            print('log', level, text)
+            if(level=='info'): print(text)
+            else:print('_log',level, text)
 
         def _message(self, text, data):
             print('message', text, data)
+
+        def _destroyed(self):
+            print('script destroyed')
+            self._evt.set()
+
 
     global runner
     runner = Runner(pid, src_path)
@@ -88,7 +96,7 @@ def main():
 
     if args.reopen: device.resume(pid)
     print('press ctrl-c to stop')
-    sys.stdin.read()
+    runner._evt.wait(timeout=100000000);
 
 if __name__ == '__main__':
     main()
