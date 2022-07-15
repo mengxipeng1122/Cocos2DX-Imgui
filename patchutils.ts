@@ -2,7 +2,6 @@
 'use strict';
 
 
-import { write } from "fs";
 import { showAsmCode } from "./fridautils";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,8 +224,42 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
  trampoline_ptr.add(0xac).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xac:	nop	 
 
  
-    let origin_bytes = hook_ptr.readByteArray(4);
-    if(origin_bytes!=null) trampoline_ptr.add(0x98).writeByteArray(origin_bytes);
+    //let origin_bytes = hook_ptr.readByteArray(4);
+    //if(origin_bytes!=null) trampoline_ptr.add(0x98).writeByteArray(origin_bytes);
+    {
+        let src_ptr = hook_ptr;
+        let tag_ptr = trampoline_ptr.add(0x98);
+        let sz = 4;
+        showAsmCode(src_ptr)
+
+        Memory.patchCode(tag_ptr, sz, patchaddr => {
+            let offset = 0;
+            while(offset < sz)
+            {
+                const inst = Instruction.parse(src_ptr.add(offset)) as Arm64Instruction
+                console.log(JSON.stringify(inst))
+                if(inst.mnemonic=='bl'){
+                    console.log('fix arm64 bl')
+                    const op0 = inst.operands[0]
+                    if(op0.type =='imm'){
+                        let imm = ptr(op0.value.toNumber());
+                        var cw = new Arm64Writer(patchaddr.add(offset));
+                        cw.putBlImm(imm)
+                        cw.flush();
+                    }
+                    offset += inst.size;
+                }
+                else{
+                    let inst_bytes =  src_ptr.add(offset).readByteArray(4);
+                    // not fix , copy directly
+                    if(inst_bytes!=null) patchaddr.add(offset).writeByteArray(inst_bytes)
+                    offset+=4;
+                }
+            }
+        })
+
+        showAsmCode(tag_ptr, 2)
+    }
     // relocation origin 
     trampoline_ptr.add(0xa0).writePointer(para1)
     trampoline_ptr.add(0xa8).writePointer(hook_fun_ptr)
@@ -278,19 +311,19 @@ export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePoi
     let origin_bytes;
     let k = hook_ptr.toString();
     if(k in inline_hook_list) {
+        // restore inline hook
         let v = inline_hook_list[k];
         origin_bytes = v.origin_bytes;
-        console.log("hooked, don't rehook") 
+        if(origin_bytes!=null) hook_ptr.writeByteArray(origin_bytes)
         showAsmCode(hook_ptr)
-        return -1;
+        console.log(`rehook at ${hook_ptr}`)
     }
-    else{
-        let origin_bytes = hook_ptr.readByteArray(4);
+    else {
         inline_hook_list[k]= {
             hook_ptr: hook_ptr,
-            origin_bytes : origin_bytes,
+            origin_bytes : hook_ptr.readByteArray(4),
         }
-        return fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1, origin_bytes);
     }
+    return fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
 }
 

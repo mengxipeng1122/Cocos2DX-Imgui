@@ -108,7 +108,7 @@ export function unloadSo(){
 
 export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, ignoreSymbols?:string[], libs?:string[], dir?:string):LoadSoInfoType {
     if(info.name in loadedSoList) {
-        console.log(`"have load {info.name} don't reload"`); 
+        console.log(`have load ${info.name} don't reload`); 
         let v = loadedSoList[info.name];
         let loadm = {
             buff : v.buff,
