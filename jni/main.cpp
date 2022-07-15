@@ -146,7 +146,7 @@ extern "C"  int init(unsigned char* baseaddress)
     auto* pDirector = cocos2d::Director::getInstance(); LOG_INFOS(" pDirector %p", pDirector);
     auto  size = pDirector->getVisibleSize(); LOG_INFOS(" %f %f", size.width, size.height);
     auto* pScene = pDirector->getRunningScene();LOG_INFOS(" pScene %p", pScene);
-    showNodeInfo(pScene);
+    // showNodeInfo(pScene);
 
     int width = size.width;
     int height= size.height;
@@ -272,3 +272,8 @@ extern "C" int hook_eglSwapBuffers(unsigned char* baseaddress)
     return 0;
 }
 
+extern "C" int hook_test(unsigned char* baseaddress, unsigned char* sp)
+{
+    LOG_INFOS(" baseaddress %p ", baseaddress);
+    return 0;
+}

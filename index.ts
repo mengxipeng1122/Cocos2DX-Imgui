@@ -1,6 +1,7 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
-import { _frida_err, _frida_hexdump, _frida_log } from './fridautils'
+import {putArm64HookPatch} from './patchutils'
+import { showAsmCode, _frida_err, _frida_hexdump, _frida_log } from './fridautils'
 import  {info as soinfo} from './patchso'
 //////////////////////////////////////////////////
 // global variables 
@@ -26,7 +27,7 @@ let inject = ()=>{
         [
             soname
         ],)
-    console.log(JSON.stringify(loadm))
+    // console.log(JSON.stringify(loadm))
 
     if(loadm.syms?.init!=undefined){
         new NativeFunction(loadm.syms.init,'int',['pointer'])(m.base)
@@ -80,8 +81,8 @@ hook_key_input : function() {
 hook_touch : function() {
     {
         Java.perform(()=>{
-            let Cocos2dxGLSurfaceView = Java.use('org.cocos2dx.lib.Cocos2dxRenderer')
-            Cocos2dxGLSurfaceView.handleActionDown.overload('int', 'float','float').implementation = function(id:number, x:number, y:number) {
+            let Cocos2dxRenderer = Java.use('org.cocos2dx.lib.Cocos2dxRenderer')
+            Cocos2dxRenderer.handleActionDown.overload('int', 'float','float').implementation = function(id:number, x:number, y:number) {
                 {
                     let funp = loadm?.syms?.handle_touch
                     if(funp==undefined) throw `can not find handle_touch`;
@@ -94,7 +95,7 @@ hook_touch : function() {
                     if(!paused) this.handleActionDown(id, x,y);
                 }
             };
-            Cocos2dxGLSurfaceView.handleActionUp.overload('int', 'float','float').implementation = function(id:number, x:number, y:number) {
+            Cocos2dxRenderer.handleActionUp.overload('int', 'float','float').implementation = function(id:number, x:number, y:number) {
                 {
                     let funp = loadm?.syms?.handle_touch
                     if(funp==undefined) throw `can not find handle_touch`;
@@ -107,7 +108,7 @@ hook_touch : function() {
                     if(!paused) this.handleActionUp(id, x,y);
                 }
             };
-            Cocos2dxGLSurfaceView.handleActionMove.overload('[I', '[F', '[F').implementation = function(ids:number[], xs:number[], ys:number[]) {
+            Cocos2dxRenderer.handleActionMove.overload('[I', '[F', '[F').implementation = function(ids:number[], xs:number[], ys:number[]) {
                 {
                     let funp = loadm?.syms?.handle_move
                     if(funp==undefined) throw `can not find handle_move`;
@@ -128,13 +129,18 @@ hook_touch : function() {
 hook_eglSwapBuffers : function(){
     {
         let funname = 'eglSwapBuffers'
-        Interceptor.attach(Module.getExportByName(null,funname),{
+        let funp = Module.getExportByName(null, funname);
+        console.log('before' )
+        showAsmCode(funp)
+        Interceptor.attach(funp,{
             onEnter : function(args){
                 let funp = loadm?.syms?.hook_eglSwapBuffers;
                 if(funp==undefined) throw `can not find eglSwapBuffers`
                 new NativeFunction(funp,'int',['pointer'])(m.base)
             }
         })
+        console.log('after' )
+        showAsmCode(funp)
     }
 
 },
@@ -146,6 +152,18 @@ hook_eglSwapBuffers : function(){
         let handle = pathes[k];
         handle();
     });;
+
+    // test
+    {
+
+        let trampoline_ptr = m.base.add(0x9f6c48);
+        let hook_ptr = m.base.add(0x2DC85C)
+        let funp = loadm?.syms?.hook_test;
+        if(funp==undefined) throw `can not find hook_test`
+        let hook_fun_ptr = funp;
+        let origin_inst = [0xa2, 0x37, 0x00, 0xf9]
+        putArm64HookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base, origin_inst )
+    }
 }
 
 let main = ()=>{
@@ -174,5 +192,39 @@ let main = ()=>{
     inject();
 }
 
+
 console.log('hello world')
 main();
+
+class Runtime{
+}
+
+export const runtime = new Runtime();
+console.log(JSON.stringify(runtime))
+let id = Script.bindWeak(runtime, () => { console.log('dispose called');  ptr(0x6666).writeInt(11)});
+
+rpc.exports.init = function(){
+    console.log('inited')
+}
+rpc.exports.dispose = function(){
+    console.log('dispose')
+}
+
+module.exports.dispose = function(){
+    console.log('dispose')
+}
+module.exports.unload = function(){
+    console.log('dispose')
+}
+module.exports.uninit = function(){
+    console.log('dispose')
+}
+module.exports.deinit = function(){
+    console.log('dispose')
+}
+
+
+
+
+
+

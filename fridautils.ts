@@ -33,3 +33,14 @@ export let logWithFileNameAndLineNo = (msg:string)=>{
     let final_caller_line = (index>=0) ?caller_line.slice(index+3) : caller_line;
     console.log(final_caller_line, ":", msg)
 }
+
+export let showAsmCode = (p:NativePointer, count?: number| undefined)=>{
+    if (count == undefined) count = 5;
+    let addr = p;
+    for(var i = 0; i<count; i++){
+        const inst = Instruction.parse(addr);
+        console.log(addr, inst.toString())
+        addr = addr.add(inst.size);
+    }
+}
+
