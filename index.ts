@@ -160,7 +160,7 @@ let test = function()
     if(m==null) return;
     let loadm  = loadPatchSo();
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
-    let hook_ptr = m.base.add(0x2DC868)
+    let hook_ptr = m.base.add(0x2DC864)
     let funp = loadm?.syms?.hook_test;
     if(funp==undefined) throw `can not find hook_test`
     let hook_fun_ptr = funp;

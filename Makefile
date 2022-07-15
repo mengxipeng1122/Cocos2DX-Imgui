@@ -19,8 +19,8 @@ build_ts: build_jni generate_patchso_ts
 	npm run build
 
 run: build_ts
-	# frida -U -f ${PACKAGE_NAME} -l _agent.js --no-pause
-	./utils/runfrida.py -p ${PACKAGE_NAME} -l _agent.js -r
+	frida -U -f ${PACKAGE_NAME} -l _agent.js --no-pause
+	#./utils/runfrida.py -p ${PACKAGE_NAME} -l _agent.js -r
 
     
 	
