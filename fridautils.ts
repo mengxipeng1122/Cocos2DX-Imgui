@@ -39,7 +39,7 @@ export let showAsmCode = (p:NativePointer, count?: number| undefined)=>{
     let addr = p;
     for(var i = 0; i<count; i++){
         const inst = Instruction.parse(addr);
-        console.log(addr, inst.toString())
+        console.log(addr, addr.sub(p), inst.toString())
         addr = addr.add(inst.size);
     }
 }

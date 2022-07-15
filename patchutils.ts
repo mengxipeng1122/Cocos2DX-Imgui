@@ -2,6 +2,7 @@
 'use strict';
 
 
+import { write } from "fs";
 import { showAsmCode } from "./fridautils";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,9 +175,15 @@ export function putArm64Nop(sp:NativePointer, ep?:NativePointer):void{
 export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
-    let trampoline_len = 0xa8;
-    //console.log(trampoline_ptr)
-    Memory.protect(trampoline_ptr, trampoline_len, 'rwx');
+    let trampoline_len = 0xb0;
+    console.log(trampoline_ptr,'trampoline_ptr')
+    Memory.protect(trampoline_ptr, trampoline_len, 'rwx')
+    let range = Process.getRangeByAddress(trampoline_ptr); console.log(JSON.stringify(range))
+
+    Memory.patchCode(trampoline_ptr, trampoline_len, code => {
+    {
+
+        if(false){
 
  trampoline_ptr.add(0x0).writeByteArray([ 0xe1, 0x3, 0xbf, 0xa9 ]); // 0x0:	stp	x1, x0, [sp, #-0x10]! 
  trampoline_ptr.add(0x4).writeByteArray([ 0xe3, 0xb, 0xbf, 0xa9 ]); // 0x4:	stp	x3, x2, [sp, #-0x10]! 
@@ -223,46 +230,115 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
  trampoline_ptr.add(0xa8).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xa8:	nop	 
  trampoline_ptr.add(0xac).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xac:	nop	 
 
+        }
+        else{
+            console.log("put code")
+            const writer = new Arm64Writer(code, { pc: trampoline_ptr });
+console.log('write code 1 '); writer.putStpRegRegRegOffset('x1',  'x0',   'sp',-0x10, 'pre-adjust'); 
+console.log('write code 2 '); writer.putStpRegRegRegOffset('x3',  'x2',   'sp',-0x10, 'pre-adjust')
+console.log('write code 3 '); writer.putStpRegRegRegOffset('x5',  'x4',   'sp',-0x10, 'pre-adjust')
+console.log('write code 4 '); writer.putStpRegRegRegOffset('x7',  'x6',   'sp',-0x10, 'pre-adjust')
+console.log('write code 5 '); writer.putStpRegRegRegOffset('x9',  'x8',   'sp',-0x10, 'pre-adjust')
+console.log('write code 6 '); writer.putStpRegRegRegOffset('x11', 'x10',  'sp',-0x10, 'pre-adjust')
+console.log('write code 7 '); writer.putStpRegRegRegOffset('x13', 'x12',  'sp',-0x10, 'pre-adjust')
+console.log('write code 8 '); writer.putStpRegRegRegOffset('x15', 'x14',  'sp',-0x10, 'pre-adjust')
+console.log('write code 9 '); writer.putStpRegRegRegOffset('x17', 'x16',  'sp',-0x10, 'pre-adjust')
+console.log('write code 10'); writer.putStpRegRegRegOffset('x19', 'x18',  'sp',-0x10, 'pre-adjust')
+console.log('write code 11'); writer.putStpRegRegRegOffset('x21', 'x20',  'sp',-0x10, 'pre-adjust')
+console.log('write code 12'); writer.putStpRegRegRegOffset('x23', 'x22',  'sp',-0x10, 'pre-adjust')
+console.log('write code 13'); writer.putStpRegRegRegOffset('x25', 'x24',  'sp',-0x10, 'pre-adjust')
+console.log('write code 14'); writer.putStpRegRegRegOffset('x27', 'x26',  'sp',-0x10, 'pre-adjust')
+console.log('write code 15'); writer.putStpRegRegRegOffset('x29', 'x28',  'sp',-0x10, 'pre-adjust')
+console.log('write code 16'); writer.putBytes ([ 0xf, 0x42, 0x3b, 0xd5 ]) // mrs x15, nzcv
+console.log('write code 17'); writer.putStpRegRegRegOffset('x15', 'x30',  'sp',-0x10, 'pre-adjust')
+console.log('write code 18'); writer.putMovRegReg('x1','sp')
+console.log('write code 19'); writer.putBytes([ 0xc0, 0x2, 0x0, 0x58 ]); // ldr  x0, trampoline_ptr.add(0xa0)
+console.log('write code 20'); writer.putBytes([ 0xe9, 0x2, 0x0, 0x58 ]); // ldr  x9, trampoline_ptr.add(0xa8)
+console.log('write code 21'); writer.putBlrReg('x9')
+console.log('write code 22'); writer.putLdpRegRegRegOffset('x15','x30','sp',0x10,'post-adjust')
+console.log('write code 23'); writer.putBytes([ 0xf, 0x42, 0x1b, 0xd5 ]) // msr nzcv, x15
+console.log('write code 24'); writer.putLdpRegRegRegOffset('x29', 'x28',  'sp',0x10,'post-adjust')
+console.log('write code 25'); writer.putLdpRegRegRegOffset('x27', 'x26',  'sp',0x10,'post-adjust')
+console.log('write code 26'); writer.putLdpRegRegRegOffset('x25', 'x24',  'sp',0x10,'post-adjust')
+console.log('write code 27'); writer.putLdpRegRegRegOffset('x23', 'x22',  'sp',0x10,'post-adjust')
+console.log('write code 28'); writer.putLdpRegRegRegOffset('x21', 'x20',  'sp',0x10,'post-adjust')
+console.log('write code 29'); writer.putLdpRegRegRegOffset('x19', 'x18',  'sp',0x10,'post-adjust')
+console.log('write code 30'); writer.putLdpRegRegRegOffset('x17', 'x16',  'sp',0x10,'post-adjust')
+console.log('write code 31'); writer.putLdpRegRegRegOffset('x15', 'x14',  'sp',0x10,'post-adjust')
+console.log('write code 32'); writer.putLdpRegRegRegOffset('x13', 'x12',  'sp',0x10,'post-adjust')
+console.log('write code 33'); writer.putLdpRegRegRegOffset('x11', 'x10',  'sp',0x10,'post-adjust')
+console.log('write code 34'); writer.putLdpRegRegRegOffset('x9',  'x8',   'sp',0x10,'post-adjust')
+console.log('write code 35'); writer.putLdpRegRegRegOffset('x7',  'x6',   'sp',0x10,'post-adjust')
+console.log('write code 36'); writer.putLdpRegRegRegOffset('x5',  'x4',   'sp',0x10,'post-adjust')
+console.log('write code 37'); writer.putLdpRegRegRegOffset('x3',  'x2',   'sp',0x10,'post-adjust')
+console.log('write code 38'); writer.putLdpRegRegRegOffset('x1',  'x0',   'sp',0x10,'post-adjust')
+console.log('write code 39'); writer.putNop()
+console.log('write code 40'); writer.putRet()
+console.log('write code 41'); writer.putNop()
+console.log('write code 42'); writer.putNop()
+console.log('write code 43'); writer.putNop()
+console.log('write code 44'); writer.putNop()
+console.log('write code 45'); writer.flush();
+showAsmCode(trampoline_ptr, trampoline_len/4)
+console.log(hexdump(trampoline_ptr,{length:trampoline_len}))
+
+        }
+    }
+})
+
  
     //let origin_bytes = hook_ptr.readByteArray(4);
     //if(origin_bytes!=null) trampoline_ptr.add(0x98).writeByteArray(origin_bytes);
+    Memory.protect(trampoline_ptr, trampoline_len, 'rwx')
     {
         let src_ptr = hook_ptr;
         let tag_ptr = trampoline_ptr.add(0x98);
         let sz = 4;
         showAsmCode(src_ptr)
 
-        Memory.patchCode(tag_ptr, sz, patchaddr => {
             let offset = 0;
-            while(offset < sz)
+            for(let t=0;t<10;t++)
             {
-                const inst = Instruction.parse(src_ptr.add(offset)) as Arm64Instruction
+                let inst = Instruction.parse(src_ptr.add(offset)) as Arm64Instruction;
                 console.log(JSON.stringify(inst))
                 if(inst.mnemonic=='bl'){
                     console.log('fix arm64 bl')
                     const op0 = inst.operands[0]
                     if(op0.type =='imm'){
-                        let imm = ptr(op0.value.toNumber());
-                        var cw = new Arm64Writer(patchaddr.add(offset));
-                        cw.putBlImm(imm)
-                        cw.flush();
+                        let imm = op0.value.toNumber();
+                        Memory.patchCode(tag_ptr.add(offset), inst.size, code => {
+                            let  writer = new Arm64Writer(code );
+                            let range = Process.getRangeByAddress(code); console.log(JSON.stringify(range))
+                            writer.putBlImm(ptr(imm))
+                            writer.flush();
+                        })
                     }
-                    offset += inst.size;
                 }
                 else{
-                    let inst_bytes =  src_ptr.add(offset).readByteArray(4);
-                    // not fix , copy directly
-                    if(inst_bytes!=null) patchaddr.add(offset).writeByteArray(inst_bytes)
-                    offset+=4;
+                    console.log("copy", offset);
+                    const inst_bytes = src_ptr.add(offset).readByteArray(inst.size)
+                    console.log("copy1", offset);
+                    let code = tag_ptr.add(offset)
+                    let range = Process.getRangeByAddress(code); console.log(JSON.stringify(range))
+                    if(inst_bytes!=null){
+                        let p = tag_ptr.add(offset)
+                        let range = Process.getRangeByAddress(p)
+                        let oldProt = range.protection;
+                        tag_ptr.add(offset).writeByteArray(inst_bytes)
+                    }
+                    console.log("copy2", offset);
                 }
+                offset += inst.size
+                if(offset >=sz) break;
             }
-        })
-
+        Memory.protect(trampoline_ptr, trampoline_len, 'rwx')
+        trampoline_ptr.add(0xa0).writePointer(para1)
+        trampoline_ptr.add(0xa8).writePointer(hook_fun_ptr)
         showAsmCode(tag_ptr, 2)
+        console.log(hexdump(tag_ptr,{length:0x20}))
     }
+//})
     // relocation origin 
-    trampoline_ptr.add(0xa0).writePointer(para1)
-    trampoline_ptr.add(0xa8).writePointer(hook_fun_ptr)
 
     {
         let p = hook_ptr;
@@ -324,6 +400,8 @@ export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePoi
             origin_bytes : hook_ptr.readByteArray(4),
         }
     }
-    return fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
+    let ret = fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
+    console.log('ret', ret)
+    return ret;
 }
 
