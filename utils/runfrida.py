@@ -47,23 +47,20 @@ def main():
     assert pid!=None, f'can not found process with package name {args.package}'
     
     class Runner:
-        def __init__(self, pid, src_path):
+        def __init__(self, session, src_path):
             self._script          = None
             self._src_path        = src_path;
-            self._pid             = pid;
+            self._session         = session
             self._evt = threading.Event()
+            self._session.on('detached', self._detached)
 
         def reloadScript(self):
             if self._script != None:
                 if 'unload' in self._script.list_exports(): self._script.exports.unload();
                 self._script.unload();
-                self._session.detach(); 
 
             src = open(self._src_path).read()
-            self._session  = device.attach(pid)
             script = self._session.create_script(src)
-            script.on('message', self._message)
-            script.on('destroyed', self._destroyed)
             script.set_log_handler(self._log)
             script.load()
             self._script = script;
@@ -77,6 +74,11 @@ def main():
             if(level=='info'): print(text)
             else:print('_log',level, text)
 
+        def _detached(self, reason):
+            print('detached', reason)
+            if(reason == 'process-terminated'): 
+                self._evt.set()
+
         def _message(self, text, data):
             print('message', text, data)
 
@@ -84,9 +86,9 @@ def main():
             print('script destroyed')
             self._evt.set()
 
-
     global runner
-    runner = Runner(pid, src_path)
+    session  = device.attach(pid)
+    runner = Runner(session, src_path)
     runner.reloadScript();
 
     event_handler = MyHandler()
