@@ -164,8 +164,14 @@ let test = function()
 
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
 
+    let test1 = new NativeCallback(function(baseaddress:NativePointer,sp:NativePointer){
+        console.log('baseaddress', baseaddress)
+    },'void',['pointer','pointer'])
+
     let infos = [
         {hook_ptr :m.base.add(0x2dc888), hook_fun_ptr:loadm?.syms.hook_test1 },
+        {hook_ptr :m.base.add(0x2dc880), hook_fun_ptr:loadm?.syms.hook_test  },
+        //{hook_ptr :m.base.add(0x2dc888), hook_fun_ptr :test1},
     ]
     infos.forEach(h=>{
         let m = Process.getModuleByName(soname)

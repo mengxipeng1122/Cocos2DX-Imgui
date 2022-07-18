@@ -235,6 +235,22 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
                             throw `now handled bl instrution ${JSON.stringify(Instruction)}`
                         }
                     }
+                    else if(inst.mnemonic=='adrp'){
+                        console.log('fix arm64 adrp')
+                        const op0 = inst.operands[0]
+                        const op1 = inst.operands[1]
+                        if(op0.type == 'reg' && op1.type =='imm'){
+                            let reg = op0.value.toString() as Arm64Register;
+                            let imm = op1.value.toNumber();
+                            let writer = new Arm64Writer(tag_ptr);
+                            writer.putAdrpRegAddress(reg, ptr(imm));
+                            writer.flush();
+                        }
+                        else{
+                            throw `now handled bl instrution ${JSON.stringify(Instruction)}`
+                        }
+
+                    }
                     else{
                         const inst_bytes = src_ptr.readByteArray(inst.size)
                         if(inst_bytes!=null){
@@ -360,7 +376,6 @@ export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePoi
         }
     }
     let ret = fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
-    console.log('ret', ret)
     return ret;
 }
 

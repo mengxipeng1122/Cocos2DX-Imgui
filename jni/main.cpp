@@ -279,4 +279,46 @@ extern "C" void hook_test(unsigned char* baseaddress, unsigned char* sp)
 extern "C" void hook_test1(unsigned char* baseaddress, unsigned char* sp)
 {
     LOG_INFOS(" baseaddress %p ", baseaddress);
+#ifdef ARM64_V8A
+    // show static 
+    unsigned int offset = 0;
+    //LOG_INFOS("x30  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("nzcv %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x28  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x29  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x26  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x27  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x24  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x25  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x22  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x23  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x20  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x21  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x18  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x19  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x16  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x17  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x14  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x15  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x12  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x13  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x10  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x11  %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x8   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x9   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x6   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x7   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x4   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x5   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x2   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x3   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x0   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+    //LOG_INFOS("x1   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
+
+    offset = 0xf8; auto* x1 = *(unsigned char**) &sp[offset];
+    LOG_INFOS("x1   %x:%p %p", offset, x1, x1-baseaddress);
+#else
+//TODO
+#error "please implements other atchitecture"
+#endif
 }
