@@ -240,9 +240,13 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
             offset += padding_sz;
         }
         {
+            // long jump
+            // 0x0:	ldr	x16, #8
+            // 0x4:	br	x16
+
             // write return instruction 
             let writer = new Arm64Writer(code.add(offset));
-            writer.putRet()
+            writer.putBImm(hook_ptr.add(origin_inst_len))
             writer.flush();
             offset += writer.offset;
         }
@@ -267,7 +271,7 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
         let p = hook_ptr;
         Memory.patchCode(p, 4, patchaddr => {
             var cw = new Arm64Writer(patchaddr);
-            cw.putBlImm(trampoline_ptr); 
+            cw.putBImm(trampoline_ptr); 
             cw.flush();
         });
     }

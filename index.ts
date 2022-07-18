@@ -160,7 +160,7 @@ let test = function()
     if(m==null) return;
     let loadm  = loadPatchSo();
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
-    let hook_ptr = m.base.add(0x2DC864)
+    let hook_ptr = m.base.add(0x2DC868)
     let funp = loadm?.syms?.hook_test;
     if(funp==undefined) throw `can not find hook_test`
     let hook_fun_ptr = funp;
@@ -175,7 +175,9 @@ let main = ()=>{
     // early inject 
     let funs = ['dlopen', 'android_dlopen_ext']
     funs.forEach(f=>{
-        Interceptor.attach(Module.getExportByName(null,f),{
+        let funp = Module.getExportByName(null,f);
+        console.log('before attach', funp); dumpMemory(funp)
+        Interceptor.attach(funp,{
             onEnter:function(args){
                 let loadpath = args[0].readUtf8String();
                 if(loadpath!=null) this.name = basename(loadpath);
@@ -192,6 +194,7 @@ let main = ()=>{
                 }
             },
         });
+        console.log('after attach', funp); dumpMemory(funp)
     })
     // inject when then game has been started
     fun();
