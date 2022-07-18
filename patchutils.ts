@@ -3,6 +3,7 @@
 
 
 import { write } from "fs";
+import { writer } from "repl";
 import { showAsmCode, dumpMemory } from "./fridautils";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +250,42 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
                         else{
                             throw `now handled bl instrution ${JSON.stringify(Instruction)}`
                         }
-
+                    }
+                    else if(inst.mnemonic=='cbz'){
+                        console.log('fix arm64 cbz')
+                        const op0 = inst.operands[0]
+                        const op1 = inst.operands[1]
+                        if(op0.type == 'reg' && op1.type =='imm'){
+                            let reg = op0.value.toString() as Arm64Register;
+                            let imm = op1.value.toNumber();
+                            let writer = new Arm64Writer(tag_ptr)
+                            // assembly manual 
+                            let from = tag_ptr;
+                            let to = ptr(imm);
+                            if(to.sub(from).compare(0x7ffff)>=0){
+                                throw `can not fix arm64 cbz`
+                            }
+                            let si;
+                            let regi = reg[0];
+                            if(regi.toLowerCase() == 'x') {
+                                si = 0xb4000000;
+                            }
+                            else if(regi.toLowerCase() == 'w') {
+                                si = 0x34000000;
+                            }
+                            else{
+                                throw `unhandled si of reg ${reg}`
+                            }
+                            let distance = to.sub(from).shr(2).and(0x7ffff).shl(5);
+                            let regidx = parseInt( reg.substring(1), 10);
+                            let myinst = ptr(si).or ( distance).or( regidx & 0x1f);
+                            console.log(myinst)
+                            writer.putInstruction(myinst.toUInt32());
+                            writer.flush();
+                        }
+                        else{
+                            throw `now handled bl instrution ${JSON.stringify(Instruction)}`
+                        }
                     }
                     else{
                         const inst_bytes = src_ptr.readByteArray(inst.size)
@@ -362,12 +398,12 @@ export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePoi
     let origin_bytes;
     let k = hook_ptr.toString();
     if(k in inline_hook_list) {
-        // restore inline hook
         let v = inline_hook_list[k];
         origin_bytes = v.origin_bytes;
-        if(origin_bytes!=null) hook_ptr.writeByteArray(origin_bytes)
-        showAsmCode(hook_ptr)
+        //if(origin_bytes!=null) hook_ptr.writeByteArray(origin_bytes)
+        //showAsmCode(hook_ptr)
         console.log(`rehook at ${hook_ptr}`)
+        return 0;
     }
     else {
         inline_hook_list[k]= {

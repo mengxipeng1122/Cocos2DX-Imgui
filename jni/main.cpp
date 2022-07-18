@@ -315,8 +315,8 @@ extern "C" void hook_test1(unsigned char* baseaddress, unsigned char* sp)
     //LOG_INFOS("x0   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
     //LOG_INFOS("x1   %x:%p", offset, *(void**) &sp[offset]); offset+= sizeof(void*);
 
-    offset = 0xf8; auto* x1 = *(unsigned char**) &sp[offset];
-    LOG_INFOS("x1   %x:%p %p", offset, x1, x1-baseaddress);
+    //offset = 0xf8; auto* x1 = *(unsigned char**) &sp[offset];
+    //LOG_INFOS("x1   %x:%p %p", offset, x1, x1-baseaddress);
 #else
 //TODO
 #error "please implements other atchitecture"

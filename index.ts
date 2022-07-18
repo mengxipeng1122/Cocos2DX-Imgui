@@ -6,6 +6,7 @@ import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
 import { info } from 'console'
 import { write } from 'fs'
+
 //////////////////////////////////////////////////
 // global variables 
 let soname = 'libMyGame.so'
@@ -163,15 +164,17 @@ let test = function()
     let loadm  = loadPatchSo();
 
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
+    let trampoline_ptr_end = m.base.add(soinfo.loads[1].virtual_address);
 
     let test1 = new NativeCallback(function(baseaddress:NativePointer,sp:NativePointer){
         console.log('baseaddress', baseaddress)
     },'void',['pointer','pointer'])
 
     let infos = [
-        {hook_ptr :m.base.add(0x2dc888), hook_fun_ptr:loadm?.syms.hook_test1 },
-        {hook_ptr :m.base.add(0x2dc880), hook_fun_ptr:loadm?.syms.hook_test  },
-        //{hook_ptr :m.base.add(0x2dc888), hook_fun_ptr :test1},
+        //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
+        //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
+        //{hook_ptr :m.base.add(0x2f3724), hook_fun_ptr:loadm?.syms.hook_test  },
+        {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr :test1},
     ]
     infos.forEach(h=>{
         let m = Process.getModuleByName(soname)
@@ -182,6 +185,9 @@ let test = function()
         if(hook_fun_ptr==undefined) throw `can not find hook_fun_ptr when handle ${JSON.stringify(h)}`
         let sz = inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
         trampoline_ptr = trampoline_ptr.add(sz)
+        if(trampoline_ptr.compare(trampoline_ptr_end)>=0){
+            throw `trampoline_ptr beyond of trampoline_ptr_end, ${trampoline_ptr}/${trampoline_ptr_end}`
+        }
     });
 }
 
