@@ -175,176 +175,95 @@ export function putArm64Nop(sp:NativePointer, ep?:NativePointer):void{
 export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
-    let trampoline_len = 0xb0;
+    let trampoline_len = 0xb4;
     console.log(trampoline_ptr,'trampoline_ptr')
-    Memory.protect(trampoline_ptr, trampoline_len, 'rwx')
-    let range = Process.getRangeByAddress(trampoline_ptr); console.log(JSON.stringify(range))
+    let origin_inst_len = 4;
 
     Memory.patchCode(trampoline_ptr, trampoline_len, code => {
     {
-
-        if(false){
-
- trampoline_ptr.add(0x0).writeByteArray([ 0xe1, 0x3, 0xbf, 0xa9 ]); // 0x0:	stp	x1, x0, [sp, #-0x10]! 
- trampoline_ptr.add(0x4).writeByteArray([ 0xe3, 0xb, 0xbf, 0xa9 ]); // 0x4:	stp	x3, x2, [sp, #-0x10]! 
- trampoline_ptr.add(0x8).writeByteArray([ 0xe5, 0x13, 0xbf, 0xa9 ]); // 0x8:	stp	x5, x4, [sp, #-0x10]! 
- trampoline_ptr.add(0xc).writeByteArray([ 0xe7, 0x1b, 0xbf, 0xa9 ]); // 0xc:	stp	x7, x6, [sp, #-0x10]! 
- trampoline_ptr.add(0x10).writeByteArray([ 0xe9, 0x23, 0xbf, 0xa9 ]); // 0x10:	stp	x9, x8, [sp, #-0x10]! 
- trampoline_ptr.add(0x14).writeByteArray([ 0xeb, 0x2b, 0xbf, 0xa9 ]); // 0x14:	stp	x11, x10, [sp, #-0x10]! 
- trampoline_ptr.add(0x18).writeByteArray([ 0xed, 0x33, 0xbf, 0xa9 ]); // 0x18:	stp	x13, x12, [sp, #-0x10]! 
- trampoline_ptr.add(0x1c).writeByteArray([ 0xef, 0x3b, 0xbf, 0xa9 ]); // 0x1c:	stp	x15, x14, [sp, #-0x10]! 
- trampoline_ptr.add(0x20).writeByteArray([ 0xf1, 0x43, 0xbf, 0xa9 ]); // 0x20:	stp	x17, x16, [sp, #-0x10]! 
- trampoline_ptr.add(0x24).writeByteArray([ 0xf3, 0x4b, 0xbf, 0xa9 ]); // 0x24:	stp	x19, x18, [sp, #-0x10]! 
- trampoline_ptr.add(0x28).writeByteArray([ 0xf5, 0x53, 0xbf, 0xa9 ]); // 0x28:	stp	x21, x20, [sp, #-0x10]! 
- trampoline_ptr.add(0x2c).writeByteArray([ 0xf7, 0x5b, 0xbf, 0xa9 ]); // 0x2c:	stp	x23, x22, [sp, #-0x10]! 
- trampoline_ptr.add(0x30).writeByteArray([ 0xf9, 0x63, 0xbf, 0xa9 ]); // 0x30:	stp	x25, x24, [sp, #-0x10]! 
- trampoline_ptr.add(0x34).writeByteArray([ 0xfb, 0x6b, 0xbf, 0xa9 ]); // 0x34:	stp	x27, x26, [sp, #-0x10]! 
- trampoline_ptr.add(0x38).writeByteArray([ 0xfd, 0x73, 0xbf, 0xa9 ]); // 0x38:	stp	x29, x28, [sp, #-0x10]! 
- trampoline_ptr.add(0x3c).writeByteArray([ 0xf, 0x42, 0x3b, 0xd5 ]); // 0x3c:	mrs	x15, nzcv 
- trampoline_ptr.add(0x40).writeByteArray([ 0xef, 0x7b, 0xbf, 0xa9 ]); // 0x40:	stp	x15, x30, [sp, #-0x10]! 
- trampoline_ptr.add(0x44).writeByteArray([ 0xe1, 0x3, 0x0, 0x91 ]); // 0x44:	mov	x1, sp 
- trampoline_ptr.add(0x48).writeByteArray([ 0xc0, 0x2, 0x0, 0x58 ]); // 0x48:	ldr	x0, #0x700000a0 
- trampoline_ptr.add(0x4c).writeByteArray([ 0xe9, 0x2, 0x0, 0x58 ]); // 0x4c:	ldr	x9, #0x700000a8 
- trampoline_ptr.add(0x50).writeByteArray([ 0x20, 0x1, 0x3f, 0xd6 ]); // 0x50:	blr	x9 
- trampoline_ptr.add(0x54).writeByteArray([ 0xef, 0x7b, 0xc1, 0xa8 ]); // 0x54:	ldp	x15, x30, [sp], #0x10 
- trampoline_ptr.add(0x58).writeByteArray([ 0xf, 0x42, 0x1b, 0xd5 ]); // 0x58:	msr	nzcv, x15 
- trampoline_ptr.add(0x5c).writeByteArray([ 0xfd, 0x73, 0xc1, 0xa8 ]); // 0x5c:	ldp	x29, x28, [sp], #0x10 
- trampoline_ptr.add(0x60).writeByteArray([ 0xfb, 0x6b, 0xc1, 0xa8 ]); // 0x60:	ldp	x27, x26, [sp], #0x10 
- trampoline_ptr.add(0x64).writeByteArray([ 0xf9, 0x63, 0xc1, 0xa8 ]); // 0x64:	ldp	x25, x24, [sp], #0x10 
- trampoline_ptr.add(0x68).writeByteArray([ 0xf7, 0x5b, 0xc1, 0xa8 ]); // 0x68:	ldp	x23, x22, [sp], #0x10 
- trampoline_ptr.add(0x6c).writeByteArray([ 0xf5, 0x53, 0xc1, 0xa8 ]); // 0x6c:	ldp	x21, x20, [sp], #0x10 
- trampoline_ptr.add(0x70).writeByteArray([ 0xf3, 0x4b, 0xc1, 0xa8 ]); // 0x70:	ldp	x19, x18, [sp], #0x10 
- trampoline_ptr.add(0x74).writeByteArray([ 0xf1, 0x43, 0xc1, 0xa8 ]); // 0x74:	ldp	x17, x16, [sp], #0x10 
- trampoline_ptr.add(0x78).writeByteArray([ 0xef, 0x3b, 0xc1, 0xa8 ]); // 0x78:	ldp	x15, x14, [sp], #0x10 
- trampoline_ptr.add(0x7c).writeByteArray([ 0xed, 0x33, 0xc1, 0xa8 ]); // 0x7c:	ldp	x13, x12, [sp], #0x10 
- trampoline_ptr.add(0x80).writeByteArray([ 0xeb, 0x2b, 0xc1, 0xa8 ]); // 0x80:	ldp	x11, x10, [sp], #0x10 
- trampoline_ptr.add(0x84).writeByteArray([ 0xe9, 0x23, 0xc1, 0xa8 ]); // 0x84:	ldp	x9, x8, [sp], #0x10 
- trampoline_ptr.add(0x88).writeByteArray([ 0xe7, 0x1b, 0xc1, 0xa8 ]); // 0x88:	ldp	x7, x6, [sp], #0x10 
- trampoline_ptr.add(0x8c).writeByteArray([ 0xe5, 0x13, 0xc1, 0xa8 ]); // 0x8c:	ldp	x5, x4, [sp], #0x10 
- trampoline_ptr.add(0x90).writeByteArray([ 0xe3, 0xb, 0xc1, 0xa8 ]); // 0x90:	ldp	x3, x2, [sp], #0x10 
- trampoline_ptr.add(0x94).writeByteArray([ 0xe1, 0x3, 0xc1, 0xa8 ]); // 0x94:	ldp	x1, x0, [sp], #0x10 
- trampoline_ptr.add(0x98).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0x98:	nop	 
- trampoline_ptr.add(0x9c).writeByteArray([ 0xc0, 0x3, 0x5f, 0xd6 ]); // 0x9c:	ret	 
- trampoline_ptr.add(0xa0).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xa0:	nop	 
- trampoline_ptr.add(0xa4).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xa4:	nop	 
- trampoline_ptr.add(0xa8).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xa8:	nop	 
- trampoline_ptr.add(0xac).writeByteArray([ 0x1f, 0x20, 0x3, 0xd5 ]); // 0xac:	nop	 
-
+        let offset = 0;
+        {
+            const writer = new Arm64Writer(code);
+            writer.putPushAllXRegisters();              
+            writer.putMovRegReg('x1','sp');             
+            writer.putBytes([ 0xE0, 0x02, 0x00, 0x58]);  // ldr  x0, trampoline_ptr.add(0xa4)
+            writer.putBytes([ 0x09, 0x03, 0x00, 0x58]);  // ldr  x9, trampoline_ptr.add(0xac)
+            writer.putBlrReg('x9');                     
+            writer.putPopAllXRegisters();               
+            writer.flush();
+            offset = writer.offset;
         }
-        else{
-            console.log("put code")
-            const writer = new Arm64Writer(code, { pc: trampoline_ptr });
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x1',  'x0',   'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x3',  'x2',   'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x5',  'x4',   'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x7',  'x6',   'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x9',  'x8',   'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x11', 'x10',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x13', 'x12',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x15', 'x14',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x17', 'x16',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x19', 'x18',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x21', 'x20',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x23', 'x22',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x25', 'x24',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x27', 'x26',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', offset); writer.putStpRegRegRegOffset('x29', 'x28',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putPushAllQRegisters(); dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putPushAllXRegisters(); dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putBytes ([ 0xf, 0x42, 0x3b, 0xd5 ]);                           dumpMemory(trampoline_ptr.add(offset), 4);} // mrs x15, nzcv
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putStpRegRegRegOffset('x15', 'x30',  'sp',-0x10, 'pre-adjust'); dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putMovRegReg('x1','sp');                                        dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putBytes([ 0xc0, 0x2, 0x0, 0x58 ]);                             dumpMemory(trampoline_ptr.add(offset), 4);} // ldr  x0, trampoline_ptr.add(0xa0)
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putBytes([ 0xe9, 0x2, 0x0, 0x58 ]);                             dumpMemory(trampoline_ptr.add(offset), 4);} // ldr  x9, trampoline_ptr.add(0xa8)
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putBlrReg('x9');                                                dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putPopAllXRegisters();                                          dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x15','x30','sp',0x10,'post-adjust');     dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putBytes([ 0xf, 0x42, 0x1b, 0xd5 ]);                            dumpMemory(trampoline_ptr.add(offset), 4);} // msr nzcv, x15
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x29', 'x28',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x27', 'x26',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x25', 'x24',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x23', 'x22',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x21', 'x20',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x19', 'x18',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x17', 'x16',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x15', 'x14',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x13', 'x12',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x11', 'x10',  'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x9',  'x8',   'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x7',  'x6',   'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x5',  'x4',   'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x3',  'x2',   'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-//{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putLdpRegRegRegOffset('x1',  'x0',   'sp',0x10,'post-adjust');  dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putNop();                                                       dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putRet();                                                       dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putNop();                                                       dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putNop();                                                       dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putNop();                                                       dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.putNop();                                                       dumpMemory(trampoline_ptr.add(offset), 4);}
-{ let offset = writer.offset; console.log('offset', ptr(offset)); writer.flush();                                                        dumpMemory(trampoline_ptr.add(offset), 4);}
-
-showAsmCode(trampoline_ptr, trampoline_len/4)
-console.log(hexdump(trampoline_ptr,{length:trampoline_len}))
-
-        }
-    }
-})
-
- 
-    //let origin_bytes = hook_ptr.readByteArray(4);
-    //if(origin_bytes!=null) trampoline_ptr.add(0x98).writeByteArray(origin_bytes);
-    Memory.protect(trampoline_ptr, trampoline_len, 'rwx')
-    {
-        let src_ptr = hook_ptr;
-        let tag_ptr = trampoline_ptr.add(0x98);
-        let sz = 4;
-        showAsmCode(src_ptr)
-
-            let offset = 0;
-            for(let t=0;t<10;t++)
+        {
+            // put origin inst
+            let padding_sz = 8;
+            let cnt = 0;
+            for(let t = offset;t < offset+padding_sz && cnt<5;cnt++)
             {
-                let inst = Instruction.parse(src_ptr.add(offset)) as Arm64Instruction;
-                console.log(JSON.stringify(inst))
-                if(inst.mnemonic=='bl'){
-                    console.log('fix arm64 bl')
-                    const op0 = inst.operands[0]
-                    if(op0.type =='imm'){
-                        let imm = op0.value.toNumber();
-                        Memory.patchCode(tag_ptr.add(offset), inst.size, code => {
-                            let  writer = new Arm64Writer(code );
-                            let range = Process.getRangeByAddress(code); console.log(JSON.stringify(range))
+                let src_ptr = hook_ptr.add(t-offset)
+                let tag_ptr = code.add(t)
+                console.log(src_ptr,'=>', tag_ptr)
+                if(t-offset<origin_inst_len){
+                    // move origin instructions
+                    let inst = Instruction.parse(src_ptr) as Arm64Instruction;
+                    console.log(JSON.stringify(inst))
+                    if(inst.mnemonic=='bl'){
+                        console.log('fix arm64 bl')
+                        const op0 = inst.operands[0]
+                        if(op0.type =='imm'){
+                            let imm = op0.value.toNumber();
+                            let writer = new Arm64Writer(tag_ptr);
                             writer.putBlImm(ptr(imm))
                             writer.flush();
-                        })
+                        }
+                        else{
+                            throw `now handled bl instrution ${JSON.stringify(Instruction)}`
+                        }
                     }
-                }
-                else{
-                    console.log("copy", offset);
-                    const inst_bytes = src_ptr.add(offset).readByteArray(inst.size)
-                    console.log("copy1", offset);
-                    let code = tag_ptr.add(offset)
-                    let range = Process.getRangeByAddress(code); console.log(JSON.stringify(range))
-                    if(inst_bytes!=null){
-                        let p = tag_ptr.add(offset)
-                        let range = Process.getRangeByAddress(p)
-                        let oldProt = range.protection;
-                        tag_ptr.add(offset).writeByteArray(inst_bytes)
+                    else{
+                        const inst_bytes = src_ptr.add(offset).readByteArray(inst.size)
+                        let code = tag_ptr.add(offset)
+                        if(inst_bytes!=null){
+                            let p = tag_ptr.add(offset)
+                            tag_ptr.writeByteArray(inst_bytes)
+                        }
                     }
-                    console.log("copy2", offset);
+                    t+= inst.size;
                 }
-                offset += inst.size
-                if(offset >=sz) break;
+                else{ 
+                    // write nop
+                    let writer = new Arm64Writer(tag_ptr);
+                    writer.putNop()
+                    writer.flush();
+                    t+=writer.offset;
+                }
             }
-        Memory.protect(trampoline_ptr, trampoline_len, 'rwx')
-        trampoline_ptr.add(0xa0).writePointer(para1)
-        trampoline_ptr.add(0xa8).writePointer(hook_fun_ptr)
-        showAsmCode(tag_ptr, 2)
-        console.log(hexdump(tag_ptr,{length:0x20}))
-    }
-//})
-    // relocation origin 
-
+            offset += padding_sz;
+        }
+        {
+            // write return instruction 
+            let writer = new Arm64Writer(code.add(offset));
+            writer.putRet()
+            writer.flush();
+            offset += writer.offset;
+        }
+        {
+            // write parameter 1 
+            code.add(offset).writePointer(para1); offset += Process.pointerSize;
+        }
+        {
+            // write hook_fun_ptr
+            code.add(offset).writePointer(hook_fun_ptr); offset += Process.pointerSize;
+        }
+        {
+            // dump contents
+            let p = code;
+            let sz= offset; console.log('offset', ptr(offset))
+            dumpMemory(p, sz)
+            showAsmCode(p, sz-Process.pointerSize*2); // skip last 2 address
+        }
+    }})
     {
+        // fix hook_ptr
         let p = hook_ptr;
         Memory.patchCode(p, 4, patchaddr => {
             var cw = new Arm64Writer(patchaddr);
