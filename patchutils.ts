@@ -175,9 +175,11 @@ export function putArm64Nop(sp:NativePointer, ep?:NativePointer):void{
 export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
-    let trampoline_len = 0xb4;
+    let trampoline_len = 0xc8;
     console.log(trampoline_ptr,'trampoline_ptr')
-    let origin_inst_len = 4;
+
+    let use_long_jump_at_hook_ptr = !(new Arm64Writer(trampoline_ptr).canBranchDirectlyBetween(hook_ptr, trampoline_ptr));
+    let origin_inst_len = use_long_jump_at_hook_ptr?0x10:0x04;
 
     Memory.patchCode(trampoline_ptr, trampoline_len, code => {
     {
@@ -186,8 +188,8 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
             const writer = new Arm64Writer(code);
             writer.putPushAllXRegisters();              
             writer.putMovRegReg('x1','sp');             
-            writer.putBytes([ 0xE0, 0x02, 0x00, 0x58]);  // ldr  x0, trampoline_ptr.add(0xa4)
-            writer.putBytes([ 0x09, 0x03, 0x00, 0x58]);  // ldr  x9, trampoline_ptr.add(0xac)
+            writer.putBytes([ 0x80, 0x03, 0x00, 0x58]);  // ldr  x0, trampoline_ptr.add(0xb8)
+            writer.putBytes([ 0xa9, 0x03, 0x00, 0x58]);  // ldr  x9, trampoline_ptr.add(0xc0)
             writer.putBlrReg('x9');                     
             writer.putPopAllXRegisters();               
             writer.flush();
@@ -195,7 +197,7 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
         }
         {
             // put origin inst
-            let padding_sz = 8;
+            let padding_sz = 0x10;
             let cnt = 0;
             for(let t = offset;t < offset+padding_sz && cnt<5;cnt++)
             {
@@ -246,15 +248,32 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
 
             // write return instruction 
             let writer = new Arm64Writer(code.add(offset));
-            writer.putBImm(hook_ptr.add(origin_inst_len))
-            writer.flush();
-            offset += writer.offset;
+            let b_back_ptr = hook_ptr.add(origin_inst_len);
+            let use_long_jump_at_b_back = !(writer.canBranchDirectlyBetween(code.add(offset), b_back_ptr));
+            if(use_long_jump_at_b_back){
+                writer.putBytes([ 0x50, 0x00, 0x00, 0x58]);  // ldr	x16, #8
+                writer.putBrReg('x16');
+                writer.flush();
+                offset += writer.offset;
+                code.add(offset).writePointer(b_back_ptr);
+                offset += Process.pointerSize;
+            }
+            else{
+                writer.putBImm(b_back_ptr);
+                writer.putNop();
+                writer.putNop();
+                writer.putNop();
+                writer.flush();
+                offset += writer.offset;
+            }
         }
         {
+            console.log('para1', ptr(offset))
             // write parameter 1 
             code.add(offset).writePointer(para1); offset += Process.pointerSize;
         }
         {
+            console.log('hook_fun_ptr', ptr(offset))
             // write hook_fun_ptr
             code.add(offset).writePointer(hook_fun_ptr); offset += Process.pointerSize;
         }
