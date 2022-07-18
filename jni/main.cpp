@@ -272,8 +272,11 @@ extern "C" int hook_eglSwapBuffers(unsigned char* baseaddress)
     return 0;
 }
 
-extern "C" int hook_test(unsigned char* baseaddress, unsigned char* sp)
+extern "C" void hook_test(unsigned char* baseaddress, unsigned char* sp)
 {
     LOG_INFOS(" baseaddress %p ", baseaddress);
-    return 0;
+}
+extern "C" void hook_test1(unsigned char* baseaddress, unsigned char* sp)
+{
+    LOG_INFOS(" baseaddress %p ", baseaddress);
 }

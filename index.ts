@@ -4,6 +4,8 @@ import {inlineHookPatch, restoreAllInlineHooks} from './patchutils'
 import {showAsmCode, dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
 import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
+import { info } from 'console'
+import { write } from 'fs'
 //////////////////////////////////////////////////
 // global variables 
 let soname = 'libMyGame.so'
@@ -156,17 +158,25 @@ hook_eglSwapBuffers : function(){
 
 let test = function()
 {
-    let m = Process.findModuleByName(soname)
+    let m = Process.findModuleByName(soname);
     if(m==null) return;
     let loadm  = loadPatchSo();
+
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
-    let hook_ptr = m.base.add(0x2DC868)
-    let funp = loadm?.syms?.hook_test;
-    if(funp==undefined) throw `can not find hook_test`
-    let hook_fun_ptr = funp;
-    dumpMemory(hook_ptr); showAsmCode(hook_ptr)
-    inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
-    dumpMemory(hook_ptr); showAsmCode(hook_ptr)
+
+    let infos = [
+        {hook_ptr :m.base.add(0x2dc888), hook_fun_ptr:loadm?.syms.hook_test1 },
+    ]
+    infos.forEach(h=>{
+        let m = Process.getModuleByName(soname)
+        let hook_ptr = h.hook_ptr;
+        let hook_fun_ptr = h.hook_fun_ptr;
+        console.log(JSON.stringify(h))
+        console.log(hook_fun_ptr)
+        if(hook_fun_ptr==undefined) throw `can not find hook_fun_ptr when handle ${JSON.stringify(h)}`
+        let sz = inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
+        trampoline_ptr = trampoline_ptr.add(sz)
+    });
 }
 
 

@@ -175,7 +175,8 @@ export function putArm64Nop(sp:NativePointer, ep?:NativePointer):void{
 export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
-    let trampoline_len = 0xc8;
+    const store_q_registers = false;
+    let trampoline_len = store_q_registers? 0x148 : 0xc8;
     console.log(trampoline_ptr,'trampoline_ptr')
 
     let use_long_jump_at_hook_ptr = !(new Arm64Writer(trampoline_ptr).canBranchDirectlyBetween(hook_ptr, trampoline_ptr));
@@ -187,16 +188,29 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
         {
             const writer = new Arm64Writer(code);
             writer.putPushAllXRegisters();              
+            if(store_q_registers){
+                writer.putPushAllQRegisters();
+            }
             writer.putMovRegReg('x1','sp');             
-            writer.putBytes([ 0x80, 0x03, 0x00, 0x58]);  // ldr  x0, trampoline_ptr.add(0xb8)
-            writer.putBytes([ 0xa9, 0x03, 0x00, 0x58]);  // ldr  x9, trampoline_ptr.add(0xc0)
+            if(store_q_registers){
+                writer.putBytes([ 0x80, 0x05, 0x00, 0x58]);  // 0x88: ldr  x0, trampoline_ptr.add(0x138)
+                writer.putBytes([ 0xa9, 0x05, 0x00, 0x58]);  // 0x8c: ldr  x9, trampoline_ptr.add(0x140)
+            }
+            else{
+                writer.putBytes([ 0x80, 0x03, 0x00, 0x58]);  // 0x48: ldr  x0, trampoline_ptr.add(0xb8)
+                writer.putBytes([ 0xa9, 0x03, 0x00, 0x58]);  // 0x4c: ldr  x9, trampoline_ptr.add(0xc0)
+            }
             writer.putBlrReg('x9');                     
+            if(store_q_registers){
+                writer.putPopAllQRegisters();
+            }
             writer.putPopAllXRegisters();               
             writer.flush();
             offset = writer.offset;
         }
         {
             // put origin inst
+            console.log('origin inst', ptr(offset))
             let padding_sz = 0x10;
             let cnt = 0;
             for(let t = offset;t < offset+padding_sz && cnt<5;cnt++)
@@ -222,10 +236,8 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
                         }
                     }
                     else{
-                        const inst_bytes = src_ptr.add(offset).readByteArray(inst.size)
-                        let code = tag_ptr.add(offset)
+                        const inst_bytes = src_ptr.readByteArray(inst.size)
                         if(inst_bytes!=null){
-                            let p = tag_ptr.add(offset)
                             tag_ptr.writeByteArray(inst_bytes)
                         }
                     }
