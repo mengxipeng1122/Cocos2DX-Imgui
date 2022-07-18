@@ -3,7 +3,6 @@
 
 
 import { write } from "fs";
-import { writer } from "repl";
 import { showAsmCode, dumpMemory } from "./fridautils";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +172,7 @@ export function putArm64Nop(sp:NativePointer, ep?:NativePointer):void{
 }
 
 
-export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
+export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number[]
 {
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
     const store_q_registers = false;
@@ -358,7 +357,7 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
             cw.flush();
         });
     }
-    return trampoline_len;
+    return [ trampoline_len, origin_inst_len];
 }
 
 //let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [ ];
@@ -405,13 +404,12 @@ export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePoi
         console.log(`rehook at ${hook_ptr}`)
         return 0;
     }
-    else {
-        inline_hook_list[k]= {
-            hook_ptr: hook_ptr,
-            origin_bytes : hook_ptr.readByteArray(4),
-        }
+
+    let [trampoline_len, origin_inst_len] = fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
+    inline_hook_list[k]= {
+        hook_ptr: hook_ptr,
+        origin_bytes : hook_ptr.readByteArray(origin_inst_len),
     }
-    let ret = fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
-    return ret;
+    return trampoline_len;
 }
 
