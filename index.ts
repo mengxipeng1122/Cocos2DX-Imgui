@@ -1,7 +1,7 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
 import {inlineHookPatch, restoreAllInlineHooks} from './patchutils'
-import {showAsmCode, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
+import {showAsmCode, dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
 import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
 //////////////////////////////////////////////////
@@ -164,7 +164,9 @@ let test = function()
     let funp = loadm?.syms?.hook_test;
     if(funp==undefined) throw `can not find hook_test`
     let hook_fun_ptr = funp;
+    dumpMemory(hook_ptr); showAsmCode(hook_ptr)
     inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
+    dumpMemory(hook_ptr); showAsmCode(hook_ptr)
 }
 
 
@@ -196,9 +198,16 @@ let main = ()=>{
 }
 
 
-rpc.exports.unload = function(){
-    console.log('unload called for Typescript')
+let cleanup = ()=>{
+    console.log('cleanup for Typescript')
     restoreAllInlineHooks()
+}
+// rpc.exports.unload = function(){
+//     cleanup();
+// }
+
+rpc.exports.dispose = function(){
+    cleanup();
 }
 
 console.log('########################################');

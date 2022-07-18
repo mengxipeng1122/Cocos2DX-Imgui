@@ -44,3 +44,14 @@ export let showAsmCode = (p:NativePointer, count?: number| undefined)=>{
     }
 }
 
+export let dumpMemory = (p:NativePointer, l?:number|undefined)=>{
+    if (l == undefined) l = 0x20;
+    console.log(hexdump(p, {
+        offset: 0,
+        length: l,
+        header: true,
+        ansi: false
+    }));
+};
+
+
