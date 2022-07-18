@@ -166,11 +166,24 @@ let test = function()
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
     let trampoline_ptr_end = m.base.add(soinfo.loads[1].virtual_address);
 
-    let infos = [
-        //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
-        //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
-        {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr:loadm?.syms.hook_test1  },
-    ]
+    let infos;
+
+    let arch = Process.arch;
+    if(arch == 'arm64'){
+        infos = [
+            //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
+            //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
+            {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr:loadm?.syms.hook_test1  },
+        ]
+    }
+    else if(arch=='arm'){
+        infos = [
+            {hook_ptr :m.base.add(0x1f3701), hook_fun_ptr:loadm?.syms.hook_test1  },
+        ]
+    }
+    else{
+        throw `unhandle architecture ${arch}`
+    }
     infos.forEach(h=>{
         let m = Process.getModuleByName(soname)
         let hook_ptr = h.hook_ptr;

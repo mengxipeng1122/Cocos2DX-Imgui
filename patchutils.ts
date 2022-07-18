@@ -2,7 +2,6 @@
 'use strict';
 
 
-import { write } from "fs";
 import { showAsmCode, dumpMemory } from "./fridautils";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18,44 +17,122 @@ export function putThumbNop(sp:NativePointer, ep?:NativePointer):void{
     }
 }
 
-export function putThumbHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer, origin_inst?:number[]):number
+export function putThumbHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number[]
 {
-    let trampoline_len = 0x30;
-    //console.log(trampoline_ptr)
-    Memory.protect(trampoline_ptr, trampoline_len, 'rwx');
-trampoline_ptr.add(0x0).writeByteArray([ 0xff, 0xb4 ]); // 0x0:	push	{r0, r1, r2, r3, r4, r5, r6, r7}
-trampoline_ptr.add(0x2).writeByteArray([ 0x2d, 0xe9, 0x0, 0x5f ]); // 0x2:	push.w	{r8, sb, sl, fp, ip, lr}
-trampoline_ptr.add(0x6).writeByteArray([ 0xef, 0xf3, 0x0, 0x80 ]); // 0x6:	mrs	r0, apsr
-trampoline_ptr.add(0xa).writeByteArray([ 0x1, 0xb4 ]); // 0xa:	push	{r0}
-trampoline_ptr.add(0xc).writeByteArray([ 0x0, 0xbf ]); // 0xc:	nop
-trampoline_ptr.add(0xe).writeByteArray([ 0x69, 0x46 ]); // 0xe:	mov	r1, sp
-trampoline_ptr.add(0x10).writeByteArray([ 0x5, 0x48 ]); // 0x10:	ldr	r0, [pc, #0x14]
-trampoline_ptr.add(0x12).writeByteArray([ 0x6, 0x4c ]); // 0x12:	ldr	r4, [pc, #0x18]
-trampoline_ptr.add(0x14).writeByteArray([ 0xa0, 0x47 ]); // 0x14:	blx	r4
-trampoline_ptr.add(0x16).writeByteArray([ 0x1, 0xbc ]); // 0x16:	pop	{r0}
-trampoline_ptr.add(0x18).writeByteArray([ 0x80, 0xf3, 0x0, 0x89 ]); // 0x18:	msr	cpsr_fc, r0
-trampoline_ptr.add(0x1c).writeByteArray([ 0xbd, 0xe8, 0x0, 0x5f ]); // 0x1c:	pop.w	{r8, sb, sl, fp, ip, lr}
-trampoline_ptr.add(0x20).writeByteArray([ 0xff, 0xbc ]); // 0x20:	pop	{r0, r1, r2, r3, r4, r5, r6, r7}
-trampoline_ptr.add(0x22).writeByteArray([ 0x0, 0xbf ]); // 0x22:	nop
-trampoline_ptr.add(0x24).writeByteArray([ 0x0, 0xbf ]); // 0x24:	nop
-trampoline_ptr.add(0x26).writeByteArray([ 0x70, 0x47 ]); // 0x26:	bx	lr
-trampoline_ptr.add(0x28).writeByteArray([ 0x0, 0xbf ]); // 0x28:	nop
-trampoline_ptr.add(0x2a).writeByteArray([ 0x0, 0xbf ]); // 0x2a:	nop
-trampoline_ptr.add(0x2c).writeByteArray([ 0x0, 0xbf ]); // 0x2c:	nop
-trampoline_ptr.add(0x2e).writeByteArray([ 0x0, 0xbf ]); // 0x2e:	nop
-
-    if(origin_inst!=undefined) trampoline_ptr.add(0x22).writeByteArray(origin_inst);
-    trampoline_ptr.add(0x28).writePointer(para1)
-    trampoline_ptr.add(0x2c).writePointer(hook_fun_ptr)
-    {
-        let p = ptr((hook_ptr.toUInt32() & (~1))>>>0);
-        Memory.patchCode(p, 4, patchaddr => {
-            var cw = new ThumbWriter(patchaddr);
-            cw.putBlImm(trampoline_ptr) 
-            cw.flush();
-        });
+    if(Process.arch!='arm' || hook_ptr.and(1).compare(1)!=0) throw(" please check archtecutre , should be and thumb function")
+    let canBranchDirectlyBetween = (from:NativePointer, to:NativePointer):boolean =>{
+        let distance = to.sub(from).toInt32();
+        return distance >=-8388608 && distance<= 8388607;
     }
-    return trampoline_len;
+
+    let use_long_jump_at_hook_ptr = !(canBranchDirectlyBetween(hook_ptr, trampoline_ptr));
+    let origin_inst_len = use_long_jump_at_hook_ptr?0x08:0x04;
+
+    let trampoline_len = 0x30;
+    Memory.patchCode(trampoline_ptr, trampoline_len, code => {
+    {
+        let offset = 0;
+        {
+            const writer = new ThumbWriter(code);
+            writer.putPushRegs([ 'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', ])
+            writer.putPushRegs(['r8', 'sb', 'sl', 'fp', 'ip', 'lr'] )
+            writer.putMrsRegReg('r0','apsr-nzcvq')
+            writer.putPushRegs([ 'r0'])
+            writer.putNop();
+            writer.putMovRegReg('r1', 'sp')
+            writer.putLdrRegRegOffset('r0','pc',0x14)
+            writer.putLdrRegRegOffset('r4','pc',0x18)
+            writer.putBlxReg('r4')
+            writer.putPopRegs(['r0'])
+            writer.putMsrRegReg('apsr-nzcvq','r0')
+            writer.putPopRegs(['r8', 'sb', 'sl', 'fp', 'ip', 'lr'] )
+            writer.putPopRegs([ 'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', ])
+            console.log('offset', writer.offset)
+            dumpMemory(code.add(offset), writer.offset-offset)
+            //showAsmCode(code.add(offset), writer.offset-offset, ArmInstruction.parse)
+        }
+        {
+            // put origin inst
+            console.log('origin inst', ptr(offset))
+            let padding_sz = 0x8;
+            let cnt = 0;
+            for(let t = offset;t < offset+padding_sz && cnt<5;cnt++)
+            {
+                let src_ptr = hook_ptr.add(t-offset).add(~1)
+                let tag_ptr = code.add(t)
+                console.log(src_ptr,'=>', tag_ptr)
+                if(t-offset<origin_inst_len){
+                    // move origin instructions
+                    let inst = Instruction.parse(src_ptr) as ArmInstruction;
+                    console.log(JSON.stringify(inst))
+                    if(inst.mnemonic=='bl'){
+                        console.log('fix thumb bl')
+                        const op0 = inst.operands[0]
+                        if(op0.type =='imm'){
+                            let imm = op0.value.valueOf();
+                            let writer = new ThumbWriter(tag_ptr);
+                            writer.putBlImm(ptr(imm))
+                            writer.flush();
+                        }
+                        else{
+                            throw `now handled bl instrution ${JSON.stringify(Instruction)}`
+                        }
+                    }
+                    else{
+                        const inst_bytes = src_ptr.readByteArray(inst.size)
+                        if(inst_bytes!=null){
+                            tag_ptr.writeByteArray(inst_bytes)
+                        }
+                    }
+                    t+= inst.size;
+                }
+                else{ 
+                    // write nop
+                    let writer = new ThumbWriter(tag_ptr);
+                    writer.putNop()
+                    writer.flush();
+                    t+=writer.offset;
+                }
+            }
+            offset += padding_sz;
+        }
+        
+
+    }});
+    //console.log(trampoline_ptr)
+//trampoline_ptr.add(0x0).writeByteArray([ 0xff, 0xb4 ]); // 0x0:	push	{r0, r1, r2, r3, r4, r5, r6, r7}
+//trampoline_ptr.add(0x2).writeByteArray([ 0x2d, 0xe9, 0x0, 0x5f ]); // 0x2:	push.w	{r8, sb, sl, fp, ip, lr}
+//trampoline_ptr.add(0x6).writeByteArray([ 0xef, 0xf3, 0x0, 0x80 ]); // 0x6:	mrs	r0, apsr
+//trampoline_ptr.add(0xa).writeByteArray([ 0x1, 0xb4 ]); // 0xa:	push	{r0}
+//trampoline_ptr.add(0xc).writeByteArray([ 0x0, 0xbf ]); // 0xc:	nop
+//trampoline_ptr.add(0xe).writeByteArray([ 0x69, 0x46 ]); // 0xe:	mov	r1, sp
+//trampoline_ptr.add(0x10).writeByteArray([ 0x5, 0x48 ]); // 0x10:	ldr	r0, [pc, #0x14]
+//trampoline_ptr.add(0x12).writeByteArray([ 0x6, 0x4c ]); // 0x12:	ldr	r4, [pc, #0x18]
+//trampoline_ptr.add(0x14).writeByteArray([ 0xa0, 0x47 ]); // 0x14:	blx	r4
+//trampoline_ptr.add(0x16).writeByteArray([ 0x1, 0xbc ]); // 0x16:	pop	{r0}
+//trampoline_ptr.add(0x18).writeByteArray([ 0x80, 0xf3, 0x0, 0x89 ]); // 0x18:	msr	cpsr_fc, r0
+//trampoline_ptr.add(0x1c).writeByteArray([ 0xbd, 0xe8, 0x0, 0x5f ]); // 0x1c:	pop.w	{r8, sb, sl, fp, ip, lr}
+//trampoline_ptr.add(0x20).writeByteArray([ 0xff, 0xbc ]); // 0x20:	pop	{r0, r1, r2, r3, r4, r5, r6, r7}
+//trampoline_ptr.add(0x22).writeByteArray([ 0x0, 0xbf ]); // 0x22:	nop
+//trampoline_ptr.add(0x24).writeByteArray([ 0x0, 0xbf ]); // 0x24:	nop
+//trampoline_ptr.add(0x26).writeByteArray([ 0x70, 0x47 ]); // 0x26:	bx	lr
+//trampoline_ptr.add(0x28).writeByteArray([ 0x0, 0xbf ]); // 0x28:	nop
+//trampoline_ptr.add(0x2a).writeByteArray([ 0x0, 0xbf ]); // 0x2a:	nop
+//trampoline_ptr.add(0x2c).writeByteArray([ 0x0, 0xbf ]); // 0x2c:	nop
+//trampoline_ptr.add(0x2e).writeByteArray([ 0x0, 0xbf ]); // 0x2e:	nop
+//
+//    if(origin_inst!=undefined) trampoline_ptr.add(0x22).writeByteArray(origin_inst);
+//    trampoline_ptr.add(0x28).writePointer(para1)
+//    trampoline_ptr.add(0x2c).writePointer(hook_fun_ptr)
+//    {
+//        let p = ptr((hook_ptr.toUInt32() & (~1))>>>0);
+//        Memory.patchCode(p, 4, patchaddr => {
+//            var cw = new ThumbWriter(patchaddr);
+//            cw.putBlImm(trampoline_ptr) 
+//            cw.flush();
+//        });
+//    }
+    return [ trampoline_len, origin_inst_len];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +254,6 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
     if(Process.arch!='arm64') throw(" please check archtecutre , should be arm64")
     const store_q_registers = false;
     let trampoline_len = store_q_registers? 0x148 : 0xc8;
-    console.log(trampoline_ptr,'trampoline_ptr')
 
     let use_long_jump_at_hook_ptr = !(new Arm64Writer(trampoline_ptr).canBranchDirectlyBetween(hook_ptr, trampoline_ptr));
     let origin_inst_len = use_long_jump_at_hook_ptr?0x10:0x04;
@@ -370,6 +446,9 @@ let patchInfos:{[key:string]:{inline_hook:Function}} ={
 
     'arm64': {
 'inline_hook' : putArm64HookPatch,
+    },
+    'arm': {
+'inline_hook' : putThumbHookPatch,
     },
 }
 

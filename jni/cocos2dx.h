@@ -52,8 +52,10 @@ namespace cocos2d
 
 #ifdef ARM64_V8A
             return *(Scene**)&pthiz[0x180];
+#elif defined(ARMEABI_V7A )
+            return *(Scene**)&pthiz[0xD0];
 #else
-//TODO
+    //TODO
 #error "please implements other atchitecture"
 #endif
         }
@@ -61,6 +63,8 @@ namespace cocos2d
             auto* pthiz = (unsigned char*)this;
 #ifdef ARM64_V8A
             return *(bool*)&pthiz[0x170];
+#elif defined(ARMEABI_V7A )
+            return *(bool*)&pthiz[0xC4];
 #else
 //TODO
 #error "please implements other atchitecture"
