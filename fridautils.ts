@@ -1,6 +1,8 @@
 
 'use strict';
 
+import { off } from "process";
+
 export let _frida_log = new NativeCallback(function(sp:NativePointer){
         let s = sp.readUtf8String();
         console.log(s)
@@ -37,12 +39,16 @@ export let logWithFileNameAndLineNo = (msg:string)=>{
 export let showAsmCode = (p:NativePointer, sz?: number| undefined, parser?:Function)=>{
     if(parser==undefined) parser=Instruction.parse;
     if (sz == undefined) sz = 5;
-    let addr = p;
     for(let offset = 0; offset<sz; ){
-        const inst = parser(addr);
-        console.log(addr, ptr(offset), inst.toString())
-        addr = addr.add(inst.size);
-        offset+= inst.size;
+        try{
+            const inst = parser(p.add(offset))
+            console.log(p.add(offset), ptr(offset), inst.toString())
+            offset+= inst.size;
+        }
+        catch(e){
+            console.log(`can parse instruction at ${p.add(offset)}`)
+            offset += Process.pointerSize;
+        }
     }
 }
 

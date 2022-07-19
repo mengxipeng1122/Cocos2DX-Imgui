@@ -1,6 +1,6 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
-import {inlineHookPatch, restoreAllInlineHooks} from './patchutils'
+import {inlineHookPatch, InlineHooker} from './patchutils'
 import {showAsmCode, dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
 import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
@@ -178,7 +178,7 @@ let test = function()
     }
     else if(arch=='arm'){
         infos = [
-            {hook_ptr :m.base.add(0x1f3701), hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_ptr :m.base.add(0x1f36f9), hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else{
@@ -233,7 +233,7 @@ let main = ()=>{
 
 let cleanup = ()=>{
     console.log('cleanup for Typescript')
-    restoreAllInlineHooks()
+    InlineHooker.restoreAllInlineHooks()
 }
 // rpc.exports.unload = function(){
 //     cleanup();

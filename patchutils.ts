@@ -2,6 +2,7 @@
 'use strict';
 
 
+import { connected } from "process";
 import { showAsmCode, dumpMemory } from "./fridautils";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,59 +437,224 @@ export function putArm64HookPatch(trampoline_ptr:NativePointer, hook_ptr:NativeP
     return [ trampoline_len, origin_inst_len];
 }
 
-//let inline_hook_list:{hook_ptr:NativePointer, origin_bytes:ArrayBuffer| null}[] = [ ];
-let inline_hook_list:{[key:string]:{
+export abstract class InlineHooker
+{
+    hook_fun_ptr        : NativePointer;
+    trampoline_ptr      : NativePointer;
+    hook_ptr            : NativePointer;
+    para1               : NativePointer;
+    constructor(hook_ptr:NativePointer, trampoline_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer){
+        this.hook_ptr       = hook_ptr;
+        this.trampoline_ptr = trampoline_ptr;
+        this.hook_fun_ptr   = hook_fun_ptr;
+        this.para1          = para1;
+    }
+
+    static max_code_cnt= 5;
+    static max_trampoline_len = 0x200;
+
+    putPrecode(p:NativePointer):number {
+        throw `please implement putPrecode function ${JSON.stringify(this)}`
+    }
+
+    relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
+        throw `please implement relocCode function ${this}`
+    }
+
+    putJumpCode(from:NativePointer, to:NativePointer):number {
+        throw `please implement putJumpCode function ${this}`
+    }
+
+    canBranchDirectlyBetween(from:NativePointer, to:NativePointer):boolean {
+        throw `please implement canBranchDirectlyBetween function ${this}`
+    }
+
+    getJumpInstLen(from:NativePointer, to:NativePointer):number{
+        throw `please implement getJumpInstLen function ${this}`
+    }
+
+    run():[number, ArrayBuffer]{
+        let origin_bytes:ArrayBuffer=new ArrayBuffer(0)
+        let offset = 0;
+        let relocsz=0;
+        let trampolineCodeAddr = ptr(0);
+        // write trampoline code 
+        Memory.patchCode(this.trampoline_ptr, InlineHooker.max_trampoline_len, code=>{
+            let sz;
+            // write hook_fun_ptr
+            code.add(offset).writePointer(this.hook_fun_ptr); offset += Process.pointerSize;
+            // write arg1
+            code.add(offset).writePointer(this.para1); offset += Process.pointerSize;
+            // write precode
+            trampolineCodeAddr = code.add(offset);
+            sz = this.putPrecode(code.add(offset)); offset += sz;
+            // relocate code 
+            relocsz = this.getJumpInstLen(this.hook_ptr, trampolineCodeAddr);
+            [sz, origin_bytes] = this.relocCode(this.hook_ptr, code.add(offset), relocsz); offset += sz;
+            // write jump back code 
+            let origin_inst_len = origin_bytes.byteLength;
+            sz = this.putJumpCode(code.add(offset), this.hook_ptr.add(origin_inst_len)); offset += sz;
+
+            // show code 
+            dumpMemory(code, offset)
+            showAsmCode(code, offset);
+        });  
+        console.log('trampolineCodeAddr', trampolineCodeAddr)
+        // write jump code at hook_ptr
+        let jumpsz = this.getJumpInstLen(this.hook_ptr, trampolineCodeAddr);
+        let bs = this.hook_ptr.readByteArray(jumpsz);
+        if(bs==null) throw `can not read byte at ${this.hook_ptr}`
+        origin_bytes = bs;
+        Memory.patchCode(this.hook_ptr, jumpsz, code=>{
+            let sz = this.putJumpCode(code, trampolineCodeAddr)
+            dumpMemory(code, sz);
+            showAsmCode(code, sz);
+        })
+        return [offset, origin_bytes];
+    }
+
+    static inlineHookerFactory(hook_ptr:NativePointer, trampoline_ptr:NativePointer, hook_fun_ptr:NativePointer, para1: NativePointer){
+        let arch = Process.arch;
+        if(arch == 'arm') {
+            if(hook_ptr.and(1).equals(1)){
+                return new ThumbInlineHooker(hook_ptr, trampoline_ptr,hook_fun_ptr, para1)
+            }
+            else {
+                return new ArmInlineHooker(hook_ptr, trampoline_ptr,hook_fun_ptr, para1)
+            }
+        }
+        else if(arch == 'arm64'){
+            return new Arm64InlineHooker(hook_ptr, trampoline_ptr,hook_fun_ptr, para1)
+        }
+        else{
+            throw `unhandle architecture ${arch}`
+        }
+    }
+
+    static all_inline_hooks:{[key:string]:{
         origin_bytes:ArrayBuffer| null,
         hook_ptr:NativePointer,
     }}= { };
 
-let patchInfos:{[key:string]:{inline_hook:Function}} ={
+    static restoreAllInlineHooks() {
+        console.log('all_inline_hooks', Object.keys(InlineHooker.all_inline_hooks).length)
+        Object.keys(InlineHooker.all_inline_hooks)
+            .forEach(k=>{
+                let v =InlineHooker.all_inline_hooks[k]
+                if (v.origin_bytes!=null){
+                    let bs = v.origin_bytes;
+                    let p = v.hook_ptr;
+                    let sz = bs.byteLength;
+                    Memory.patchCode(p, sz, code=>{
+                        code.writeByteArray(bs)
+                    })
+                }
+            })
+    }
 
-    'arm64': {
-'inline_hook' : putArm64HookPatch,
-    },
-    'arm': {
-'inline_hook' : putThumbHookPatch,
-    },
+    static hasHooked(hook_ptr:NativePointer):boolean{
+        return hook_ptr.toString() in InlineHooker.all_inline_hooks;
+    }
 }
 
-export function restoreAllInlineHooks()
-{
-    console.log('inline_hook_list', Object.keys(inline_hook_list).length)
-    Object.keys(inline_hook_list)
-        .forEach(k=>{
-            let v = inline_hook_list[k]
-            if (v.origin_bytes!=null){
-                let p = v.hook_ptr;
-                let sz = v.origin_bytes.byteLength;
-                Memory.protect(p,sz,'rwx')
-                p.writeByteArray(v.origin_bytes)
-                Memory.protect(p,sz,'rwx')
+class ThumbInlineHooker extends InlineHooker{
+
+    constructor(hook_ptr:NativePointer, trampoline_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer){
+        super(hook_ptr.and(~1), trampoline_ptr, hook_fun_ptr,para1)
+    }
+
+    putPrecode(p:NativePointer):number {
+        const writer = new ThumbWriter(p);
+        writer.putPushRegs([ 'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', ])
+        writer.putPushRegs(['r8', 'sb', 'sl', 'fp', 'ip', 'lr'] )
+        writer.putMrsRegReg('r0','apsr-nzcvq')
+        writer.putPushRegs([ 'r0'])
+        writer.putNop();
+        writer.putMovRegReg('r1', 'sp')
+        writer.putBytes([ 0x5F, 0xF8, 0x18, 0x00]) // ldr.w	r0, [pc, #-0x18]
+        writer.putBytes([ 0x5F, 0xF8, 0x20, 0x40]) // ldr.w	r4, [pc, #-0x20]
+        writer.putBlxReg('r4')
+        writer.putPopRegs(['r0'])
+        writer.putMsrRegReg('apsr-nzcvq','r0')
+        writer.putPopRegs(['r8', 'sb', 'sl', 'fp', 'ip', 'lr'] )
+        writer.putPopRegs([ 'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', ])
+        writer.flush();
+        return writer.offset;
+    }
+
+    relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
+        console.log('relocCode sz', sz);
+        let offset = 0;
+        const writer = new ThumbWriter(to);
+        const relocator = new ThumbRelocator(from, writer)
+        for(let c=0;c<InlineHooker.max_code_cnt; c++){
+            offset = relocator.readOne(); 
+            let inst = relocator.input;
+            console.log(offset, 'inst', JSON.stringify(inst))
+            relocator.writeOne();
+            if(offset>=sz) break;
+        }
+        writer.flush();
+        let origin_bytes = from.readByteArray(offset);
+        if(origin_bytes==null) throw `can not read origin byte at ${from}`
+        return [writer.offset, origin_bytes]
+    }
+
+    canBranchDirectlyBetween(from:NativePointer, to:NativePointer):boolean {
+        let distance = to.or(1).sub(from.or(1)).toInt32();
+        console.log('from', from)
+        console.log('to', to)
+        console.log('distance', distance);
+        return distance >=-8388608 && distance<= 8388607;
+    }
+
+    getJumpInstLen(from:NativePointer, to:NativePointer):number{
+        if(this.canBranchDirectlyBetween(from, to)) return 4;
+        else return 8;
+    }
+
+    putJumpCode(from:NativePointer, to:NativePointer):number {
+        let code = from.and(~1);
+        const writer = new ThumbWriter(code);
+        if(this.canBranchDirectlyBetween(from,to)){
+            writer.putBImm(to.or(1))
+            writer.flush();
+            return writer.offset;
+        }
+        else{
+            console.log(from,'=>', to.or(1))
+            if(code.and(0x3).equals(0)) {
+                writer.putLdrRegRegOffset('pc','pc',0)
             }
-        })
+            else{
+                writer.putLdrRegRegOffset('pc','pc',2)
+            }
+            writer.flush()
+            from.add(writer.offset).writePointer(to.or(1))
+            return writer.offset+Process.pointerSize;
+        }
+    }
+
+}
+
+class ArmInlineHooker extends InlineHooker{
+
+}
+
+class Arm64InlineHooker extends InlineHooker{
+
 }
 
 export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
 {
-    //console.log('inline_hook_list', inlineHookPatch.length)
-    let arch = Process.arch;
-    let fun = patchInfos[arch].inline_hook;
-    let origin_bytes;
-    let k = hook_ptr.toString();
-    if(k in inline_hook_list) {
-        let v = inline_hook_list[k];
-        origin_bytes = v.origin_bytes;
-        //if(origin_bytes!=null) hook_ptr.writeByteArray(origin_bytes)
-        //showAsmCode(hook_ptr)
-        console.log(`rehook at ${hook_ptr}`)
-        return 0;
-    }
+    if(InlineHooker.hasHooked(hook_ptr)) return 0;
 
-    let [trampoline_len, origin_inst_len] = fun(trampoline_ptr, hook_ptr, hook_fun_ptr, para1);
-    inline_hook_list[k]= {
-        hook_ptr: hook_ptr,
-        origin_bytes : hook_ptr.readByteArray(origin_inst_len),
+    let inlineHooker = InlineHooker.inlineHookerFactory(hook_ptr, trampoline_ptr, hook_fun_ptr, para1);
+    let [trampoline_len, origin_bytes] = inlineHooker.run();
+    let k = hook_ptr.toString();
+    InlineHooker.all_inline_hooks[k]= {
+        hook_ptr: hook_fun_ptr,
+        origin_bytes : origin_bytes,
     }
     return trampoline_len;
 }
-
