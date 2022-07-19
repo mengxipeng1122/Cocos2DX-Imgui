@@ -636,6 +636,71 @@ class ArmInlineHooker extends InlineHooker{
 
 class Arm64InlineHooker extends InlineHooker{
 
+    constructor(hook_ptr:NativePointer, trampoline_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer){
+        super(hook_ptr, trampoline_ptr, hook_fun_ptr,para1)
+    }
+
+    putPrecode(p:NativePointer):number {
+        const writer = new Arm64Writer(p);
+        writer.putPushAllXRegisters();              
+        writer.putMovRegReg('x1','sp');             
+        writer.putBytes([ 0x80, 0xfd, 0xff, 0x58]);  // 0x58: ldr  x0, trampoline_ptr.add(0x08)
+        writer.putBytes([ 0x29, 0xfd, 0xff, 0x58]);  // 0x5c: ldr  x9, trampoline_ptr.add(0x00)
+        writer.putBlrReg('x9');                     
+        writer.putPopAllXRegisters();               
+        writer.flush();
+        return writer.offset;
+    }
+
+    relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
+        console.log('relocCode sz', sz, from, '=>', to);
+        let offset = 0;
+        let code = to.and(~1);
+        const writer = new Arm64Writer(code);
+        const relocator = new Arm64Relocator(from, writer)
+        for(let c=0;c<InlineHooker.max_code_cnt; c++){
+            dumpMemory(to.add(offset), 0x10)
+            dumpMemory(from.add(offset), 0x10)
+            offset = relocator.readOne(); 
+            let inst = relocator.input;
+            console.log(offset, 'inst', JSON.stringify(inst))
+            relocator.writeOne();
+            if(offset>=sz) break;
+        }
+        writer.flush();
+        let origin_bytes = from.readByteArray(offset);
+        if(origin_bytes==null) throw `can not read origin byte at ${from}`
+        return [writer.offset, origin_bytes]
+    }
+
+    canBranchDirectlyBetween(from:NativePointer, to:NativePointer):boolean {
+        return new Arm64Writer(ptr(0)).canBranchDirectlyBetween(from, to);
+    }
+
+    getJumpInstLen(from:NativePointer, to:NativePointer):number{
+        if(this.canBranchDirectlyBetween(from, to)) return 4;
+        else return 0x10;
+    }
+
+    putJumpCode(from:NativePointer, to:NativePointer):number {
+        let code = from;
+        const writer = new Arm64Writer(code);
+        if(this.canBranchDirectlyBetween(from,to)){
+            writer.putBImm(to)
+            writer.flush();
+            return writer.offset;
+        }
+        else{
+            console.log(from,'=>', to)
+            writer.putBytes([ 0x50, 0x00, 0x00, 0x58]);  // ldr	x16, #8
+            writer.putBrReg('x16');
+            writer.flush()
+            from.add(writer.offset).writePointer(to)
+            return writer.offset+Process.pointerSize;
+        }
+    }
+
+
 }
 
 export function inlineHookPatch(trampoline_ptr:NativePointer, hook_ptr:NativePointer, hook_fun_ptr:NativePointer, para1:NativePointer):number
