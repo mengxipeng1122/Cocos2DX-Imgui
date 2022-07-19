@@ -167,13 +167,33 @@ let test = function()
     let trampoline_ptr_end = m.base.add(soinfo.loads[1].virtual_address);
 
     let infos;
+    let frida_fun = new NativeCallback(function(sp:NativePointer){
+        console.log(sp.readUtf8String(),'from frida_fun')
+    },'void',['pointer'])
+
+    const cm = new CModule(`
+//#include <stdio.h>
+void _frida_fun(const char* s);
+void fun(void) {
+  //printf("Hello World from CModule\\n");
+  _frida_fun("Hello World from CModule\\n");
+}
+`,{
+    _frida_fun: frida_fun,
+});
+
+console.log(JSON.stringify(cm));
+
+const hello = new NativeFunction(cm.fun, 'void', []);
+//hello();
 
     let arch = Process.arch;
     if(arch == 'arm64'){
         infos = [
             //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
             //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
-            {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr:loadm?.syms.hook_test1  },
+            // {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr:cm.fun  },
         ]
     }
     else if(arch=='arm'){
@@ -203,7 +223,7 @@ let test = function()
 
 
 let main = ()=>{
-    let fun = test;
+    let fun = inject;
     // early inject 
     let funs = ['dlopen', 'android_dlopen_ext']
     funs.forEach(f=>{
