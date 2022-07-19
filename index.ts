@@ -1,6 +1,6 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
-import {inlineHookPatch, InlineHooker} from './patchutils'
+import {inlineHookPatch, restoreAllInlineHooks} from './patchutils'
 import {showAsmCode, dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
 import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
@@ -178,7 +178,7 @@ let test = function()
     }
     else if(arch=='arm'){
         infos = [
-            {hook_ptr :m.base.add(0x1f36f9), hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_ptr :m.base.add(0x1f3701), hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else{
@@ -190,6 +190,8 @@ let test = function()
         let hook_fun_ptr = h.hook_fun_ptr;
         console.log(JSON.stringify(h))
         console.log(hook_fun_ptr)
+        console.log('origin code')
+        dumpMemory(hook_ptr, 0x10)
         if(hook_fun_ptr==undefined) throw `can not find hook_fun_ptr when handle ${JSON.stringify(h)}`
         let sz = inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
         trampoline_ptr = trampoline_ptr.add(sz)
@@ -230,16 +232,24 @@ let main = ()=>{
     fun();
 }
 
+let android_output = (s:string)=>{
+    let funp = Module.getExportByName(null,'__android_log_print')
+    let fun = new NativeFunction(funp, 'int',['int','pointer','pointer'])
+    fun(0, Memory.allocUtf8String("frida"), Memory.allocUtf8String(s))
+
+}
 
 let cleanup = ()=>{
     console.log('cleanup for Typescript')
-    InlineHooker.restoreAllInlineHooks()
+    restoreAllInlineHooks()
 }
 // rpc.exports.unload = function(){
 //     cleanup();
 // }
 
 rpc.exports.dispose = function(){
+    console.log("call dispose")
+    //android_output('android call dispose')
     cleanup();
 }
 
